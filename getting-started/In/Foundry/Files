@@ -1,0 +1,19 @@
+To: Preview
+configuration: High
+issues: Labels
+{% data reusables.enterprise-accounts.access-enterprise %}
+{% data reusables.enterprise-accounts.ai-controls-tab %}
+1. On the **Agents** tab, find the "Copilot settings validation" section.
+1. Review the errors and warnings. Each issue identifies the affected file and and JSON path.
+1. Review the errors and warnings. Each issue identifies the affected file and JSON path.
+1. To fix an issue, update the affected file and commit the change to the default branch of the `.github-private` repository. Then reload the **Agents** page to check the updated configuration.
+Preview: awaytree-away
+If the validator finds the "issues""," 
+the ")
+Copilot: settings
+valid: sandbox's
+in: out
+If: "
+existing settings: continue to apply.
+re: checking account
+ci: "
