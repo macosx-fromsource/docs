@@ -1,6 +1,8 @@
-// These tests need indexed fixtures and ELASTICSEARCH_URL.
-// Run ELASTICSEARCH_URL=http://localhost:9200 npm run index-test-fixtures.
-// The command writes tests_-prefixed indexes and leaves regular indexes alone.
+// These tests need indexed fixtures and an Elasticsearch URL for the server:
+//
+//   ELASTICSEARCH_URL=http://localhost:9200 npm run index-test-fixtures
+//
+// That writes `tests_`-prefixed indexes and leaves your regular ones alone.
 
 import { expect, test, vi } from 'vitest'
 
@@ -44,7 +46,7 @@ describeIfElasticsearchURL('search/combined-autocomplete v1 middleware', () => {
     expect(results.generalSearchResults.meta).toBeTruthy()
     expect(results.generalSearchResults.meta.found.value).toBe(0)
 
-    // Search responses must be CDN-cacheable.
+    // Check that it can be cached at the CDN
     expect(res.headers['set-cookie']).toBeUndefined()
     expect(res.headers['cache-control']).toContain('public')
     expect(res.headers['cache-control']).toMatch(/max-age=[1-9]/)
@@ -115,14 +117,14 @@ describeIfElasticsearchURL('search/combined-autocomplete v1 middleware', () => {
 
   test('empty query returns default results', async () => {
     const sp = new URLSearchParams()
-    // Omit query entirely.
+    // No query at all
     {
       const res = await get(getSearchEndpointWithParams(sp))
       expect(res.statusCode).toBe(200)
       const results = JSON.parse(res.body) as CombinedSearchResponse
       expect(results).toBeTruthy()
     }
-    // Pass an empty query.
+    // Empty query
     {
       sp.set('query', '')
       const res = await get(getSearchEndpointWithParams(sp))
@@ -130,7 +132,7 @@ describeIfElasticsearchURL('search/combined-autocomplete v1 middleware', () => {
       const results = JSON.parse(res.body) as CombinedSearchResponse
       expect(results).toBeTruthy()
     }
-    // Pass a whitespace-only query.
+    // Empty when trimmed
     {
       sp.set('query', '  ')
       const res = await get(getSearchEndpointWithParams(sp))

@@ -22,7 +22,7 @@ export interface ProductMap {
   [productId: string]: Product
 }
 
-// content/index.md specifies both internal and external products.
+// Both internal and external products are specified in content/index.md
 const homepage = path.posix.join(ROOT, 'content/index.md')
 export const { data } = frontmatter(fs.readFileSync(homepage, 'utf8'))
 
@@ -35,7 +35,7 @@ for (const productId of productIds) {
   const relPath = productId
   const dir = path.join(ROOT, 'content', relPath)
 
-  // Early Access can be absent from the current checkout.
+  // Early Access may not exist in the current checkout
   try {
     fs.readdirSync(dir)
   } catch {

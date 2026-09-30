@@ -6,7 +6,7 @@ import {
   getLocalizedGroupNames,
 } from '@/products/lib/get-product-groups'
 
-// name matches the helper's required ProductGroupData shape.
+// `name` is required here to match what the library expects.
 interface MockProductGroupData {
   name: string
   octicon?: string
@@ -67,7 +67,7 @@ describe('get-product-groups helper functions', () => {
       const localizedByOcticon: { [key: string]: string } = {
         RocketIcon: 'Empezar',
         ShieldLockIcon: 'Seguridad',
-        CopilotIcon: 'GitHub Copilot',
+        CopilotIcon: 'GitHub Copilot', // Some names stay the same
       }
 
       const nameMap: { [key: string]: string } = mapEnglishToLocalizedNames(
@@ -90,7 +90,7 @@ describe('get-product-groups helper functions', () => {
 
       const localizedByOcticon: { [key: string]: string } = {
         RocketIcon: 'Empezar',
-        // MissingIcon has no localized entry.
+        // MissingIcon is not in the localized map
       }
 
       const nameMap: { [key: string]: string } = mapEnglishToLocalizedNames(
@@ -105,16 +105,16 @@ describe('get-product-groups helper functions', () => {
     })
 
     test('handles different ordering between English and localized groups', () => {
-      // English groups use one order.
+      // English groups in one order
       const englishGroups: MockProductGroupData[] = [
         { name: 'Get started', octicon: 'RocketIcon', children: [] },
         { name: 'Security', octicon: 'ShieldLockIcon', children: [] },
       ]
 
-      // Localized groups use a different order and still map by octicon.
+      // Localized groups in different order (but mapped by octicon)
       const localizedByOcticon: { [key: string]: string } = {
-        ShieldLockIcon: 'Seguridad',
-        RocketIcon: 'Empezar',
+        ShieldLockIcon: 'Seguridad', // Security comes first in localized
+        RocketIcon: 'Empezar', // Get started comes second
       }
 
       const nameMap: { [key: string]: string } = mapEnglishToLocalizedNames(
@@ -142,7 +142,7 @@ describe('get-product-groups helper functions', () => {
         { name: 'GitHub Copilot', octicon: 'CopilotIcon', children: ['copilot'] },
       ]
 
-      // Spanish localized index data supplies translated names with matching octicons.
+      // Simulate what would come from a Spanish localized file
       const mockLocalizedChildGroups: MockProductGroupData[] = [
         { name: 'Empezar', octicon: 'RocketIcon', children: ['get-started'] },
         { name: 'Seguridad', octicon: 'ShieldLockIcon', children: ['code-security'] },
@@ -170,7 +170,7 @@ describe('get-product-groups helper functions', () => {
       expect(finalResult[1].name).toBe('Seguridad')
       expect(finalResult[2].name).toBe('GitHub Copilot')
 
-      // Technical data remains unchanged.
+      // Technical data should remain unchanged
       expect(finalResult[0].octicon).toBe('RocketIcon')
       expect(finalResult[0].children).toEqual(['get-started'])
     })

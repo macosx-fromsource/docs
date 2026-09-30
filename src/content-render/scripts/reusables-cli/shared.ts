@@ -73,12 +73,12 @@ export function getIndicesOfLiquidVariable(liquidVariable: string, fileContents:
 }
 
 export function resolveReusablePath(reusablePath: string): string {
-  // Append .md when the reusable path has no extension.
+  // Try .md if extension is not provided
   if (!reusablePath.endsWith('.md') && !reusablePath.endsWith('.yml')) {
     reusablePath += '.md'
   }
 
-  // Resolve a path fragment only when it matches exactly one reusable file.
+  // Allow user to just pass the name of the file. If it's not ambiguous, we'll find it.
   const allReusableFiles = getAllReusablesFilePaths()
   const foundPaths = []
   for (const possiblePath of allReusableFiles) {
@@ -130,12 +130,13 @@ export function findIndicesOfSubstringInString(substr: string, str: string): num
 }
 
 export function findSimilarSubStringInString(substr: string, str: string) {
-  // Score each substring sentence against each corpus sentence by shared words.
+  // Take every sentence in the substr, lower case it, and compare it to every sentence in the str to get a similarity score
   const substrSentences = substr.split('.').map((sentence) => sentence.toLowerCase())
   const corpus = str.split('.').map((sentence) => sentence.toLowerCase())
 
   let similarityScore = 0
 
+  // Find how similar every two strings are based on the words they share
   for (const substrSentence of substrSentences) {
     for (const sentence of corpus) {
       const substrTokens = substrSentence.split(' ')

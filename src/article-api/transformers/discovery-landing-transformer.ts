@@ -13,6 +13,11 @@ interface DiscoveryPage extends Page {
   children?: string[]
 }
 
+/**
+ * Transforms discovery-landing pages into markdown format.
+ * Handles recommended carousel, intro links, article grids with
+ * category filtering, and children listings.
+ */
 export class DiscoveryLandingTransformer implements PageTransformer {
   templateName = 'landing-page.template.md'
 
@@ -42,6 +47,7 @@ export class DiscoveryLandingTransformer implements PageTransformer {
     const discoveryPage = page as DiscoveryPage
     const sections: Section[] = []
 
+    // Process carousels (each carousel becomes a section)
     const carousels = discoveryPage.carousels ?? discoveryPage.rawCarousels
     if (carousels && typeof carousels === 'object') {
       const { default: getPageLinkData } = await import('@/frame/lib/get-link-data')
@@ -51,12 +57,14 @@ export class DiscoveryLandingTransformer implements PageTransformer {
 
         let links: LinkData[]
         if (typeof articles[0] === 'object' && 'title' in articles[0]) {
+          // Already resolved articles
           links = articles.map((item) => ({
             href: typeof item === 'string' ? item : item.href,
             title: (typeof item === 'object' && item.title) || '',
             intro: (typeof item === 'object' && item.intro) || '',
           }))
         } else {
+          // Raw paths that need resolution
           const linkData = await getPageLinkData(articles as string[], context, {
             title: true,
             intro: true,
@@ -117,7 +125,10 @@ export class DiscoveryLandingTransformer implements PageTransformer {
       }
     }
 
-    // getAllTocItems sets basePath to keep /rest from recursing into /enterprise-admin children.
+    // Articles section: recursively gather descendant articles within
+    // this product section. The basePath guard prevents cross-product
+    // recursion (e.g. /rest listing /enterprise-admin children that
+    // point outside the /rest hierarchy).
     if (discoveryPage.children && discoveryPage.children.length > 0) {
       const tocItems = await getAllTocItems(page, context)
 
@@ -127,7 +138,7 @@ export class DiscoveryLandingTransformer implements PageTransformer {
       if (discoveryPage.includedCategories && discoveryPage.includedCategories.length > 0) {
         const includedCategories = discoveryPage.includedCategories.map((c) => c.toLowerCase())
 
-        // includedCategories filters by category metadata from the full TOC tree.
+        // Build a map of href → category from the full tree
         const categoryMap = new Map<string, string[]>()
         interface TocNode {
           href: string

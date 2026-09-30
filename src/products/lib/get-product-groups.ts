@@ -10,9 +10,6 @@ import languages from '@/languages/lib/languages-server'
 
 type PageMap = Record<string, Page>
 
-// childGroups stores ids such as code-security/dependabot, not localized, versioned hrefs.
-// Try the localized current-version href first, then fall back to product.versions[0]
-// from productMap.
 async function getPage(
   id: string,
   lang: string,
@@ -24,6 +21,15 @@ async function getPage(
 
   const external = product.external || false
 
+  // We only have an `id` like 'code-security/dependabot',
+  // so the href has to be guessed.
+  // On `/fr/enterprise-server@3.9` we try
+  // `/fr/enterprise-server@3.9/code-security/dependabot` first.
+  // Pages aren't available in every version,
+  // so the fallback is `product.versions[0]` from the `productMap`,
+  // not to be confused with the `pageMap`.
+  // That keeps the current version when it applies,
+  // and degrades to the first when it doesn't.
   let href = product.href
 
   let name = product.name
@@ -33,6 +39,9 @@ async function getPage(
   if (!external) {
     href = removeFPTFromPath(path.posix.join('/', lang, context.currentVersion, id))
     if (!pageMap[href]) {
+      // Fall back to `product.versions[0]`.
+      // For example, you're on `/en/enterprise-server@3.1`
+      // but `/foo/bar` only exists in `enterprise-cloud@latest`.
       if (!product.versions) throw new Error(`Product ${productId} has no versions`)
       href = removeFPTFromPath(path.posix.join('/', lang, product.versions[0], id))
     }
@@ -43,7 +52,8 @@ async function getPage(
       )
     }
 
-    // Returning undefined lets the caller filter products unavailable in the current version.
+    // Some should not be included for the current version, and returning
+    // undefined here means this entry will be filtered out by the caller.
     const isFPT = context.currentVersion === 'free-pro-team@latest'
     if (!isFPT && !page.applicableVersions.includes(context.currentVersion)) {
       return
@@ -55,14 +65,16 @@ async function getPage(
         throwIfEmpty: false,
       })
     }
-    // Fall back to rawTitle when rawShortTitle is missing or Liquid renders it empty.
+    // Either the page didn't have a `rawShortTitle` or it was empty when
+    // rendered out with Liquid. Either way, have to fall back to `rawTitle`.
     if (!name || !page.rawShortTitle) {
       name = await renderContentWithFallback(page, 'rawTitle', context, {
         textOnly: true,
       })
     }
   }
-  // ProductSelectionCard only needs these props.
+  // Return only the props needed for the ProductSelectionCard, since
+  // that's the only place this is ever used.
   return {
     id,
     name,
@@ -135,7 +147,7 @@ export async function getProductGroups(
   lang: string,
   context: Context,
 ): Promise<ProductGroup[]> {
-  // Use English childGroups for octicons and children; localized files supply names only.
+  // Always use English version for structure (octicon, children)
   const englishChildGroups = data?.childGroups || []
 
   const localizedByOcticon = await getLocalizedGroupNames(lang)
@@ -148,7 +160,7 @@ export async function getProductGroups(
         name: localizedName,
         icon: group.icon || null,
         octicon: group.octicon || null,
-        // Children are usually product IDs, but deeper page paths are also valid.
+        // Typically the children are product IDs, but we support deeper page paths too
         children: (
           await Promise.all(group.children.map((id: string) => getPage(id, lang, pageMap, context)))
         ).filter(Boolean) as ProductGroupChild[],

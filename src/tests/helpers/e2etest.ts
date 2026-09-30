@@ -82,7 +82,7 @@ export async function get<T extends ResponseTypes = 'text'>(
     headersRecord[key] = value
   }
 
-  // Tests still expect got-compatible response fields.
+  // Return response in got-compatible format
   return {
     body: responseBody,
     statusCode: response.status,
@@ -116,7 +116,7 @@ export async function getDOMCached(
     const $ = await getDOM(route, options)
     getDOMCache.set(key, $)
   }
-  // The cache sets the key before this lookup.
+  // The non-null assertion is safe here because we've just set the key if it didn't exist
   return getDOMCache.get(key)!
 }
 
@@ -134,9 +134,9 @@ export async function getDOM(route: string, options: GetDOMOptions = {}): Promis
 
   const $ = load(res.body || '', { xmlMode: true })
   const result = $ as CachedDOMResult
-  // Older tests read the response from the Cheerio object.
+  // Attach res to the cheerio object for backward compatibility
   result.res = res
-  // Older tests destructure $ from the Cheerio object.
+  // Attach $ to itself for destructuring compatibility
   result.$ = result
 
   return result

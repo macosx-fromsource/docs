@@ -7,7 +7,7 @@ import { createLogger } from '@/observability/logger'
 
 const logger = createLogger('article-api/liquid-renderers/rest-tags')
 
-// Templates render REST parameters with {% rest_parameter param %}.
+// Usage: {% rest_parameter param %}
 export class RestParameter {
   private paramName: string
 
@@ -17,6 +17,7 @@ export class RestParameter {
     liquid: Liquid,
     private liquidContext?: LiquidContext,
   ) {
+    // The tag receives the parameter object from the template context
     this.paramName = token.args.trim()
   }
 
@@ -52,7 +53,7 @@ export class RestParameter {
   }
 }
 
-// Templates render REST body parameters with {% rest_body_parameter param indent %}.
+// Usage: {% rest_body_parameter param indent %}
 export class RestBodyParameter {
   constructor(
     token: TagToken,
@@ -108,7 +109,7 @@ export class RestBodyParameter {
   }
 }
 
-// Templates render REST status codes with {% rest_status_code statusCode %}.
+// Usage: {% rest_status_code statusCode %}
 export class RestStatusCode {
   private statusCodeName: string
 
@@ -189,10 +190,10 @@ async function htmlToMarkdown(html: string, context: Context): Promise<string> {
   } catch (error) {
     logger.error('Failed to render HTML content to markdown in REST tag', {
       error,
-      html: html.substring(0, 100), // Log 100 characters for rendering context.
+      html: html.substring(0, 100), // First 100 chars for context
       contextInfo: context && context.page ? { page: context.page.relativePath } : undefined,
     })
-    // Re-throw outside production to expose rendering failures during development.
+    // In non-production, re-throw to aid debugging
     if (process.env.NODE_ENV !== 'production') {
       throw error
     }

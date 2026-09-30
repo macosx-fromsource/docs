@@ -6,13 +6,15 @@ const makeURL = (pathname: string) => `/api/article/body?${new URLSearchParams({
 
 describe('article body api', () => {
   beforeAll(() => {
-    // Missing ROOT makes local fixture failures hard to trace.
+    // If you didn't set the `ROOT` variable, the tests will fail rather
+    // cryptically. So as a warning for engineers running these tests,
+    // alert in case it was accidentally forgotten.
     if (!process.env.ROOT) {
       console.warn(
         'WARNING: The articlebody tests require the ROOT environment variable to be set to the fixture root',
       )
     }
-    // Missing TRANSLATIONS_FIXTURE_ROOT breaks fixture-based translations.
+    // Ditto for fixture-based translations to work
     if (!process.env.TRANSLATIONS_FIXTURE_ROOT) {
       console.warn(
         'WARNING: The articlebody tests require the TRANSLATIONS_FIXTURE_ROOT environment variable to be set',
@@ -26,7 +28,7 @@ describe('article body api', () => {
     expect(res.headers['content-type']).toContain('text/markdown')
     expect(res.body).toContain('## About GitHub')
     expect(res.body).toContain('## About Git')
-    expect(res.body).toMatch(/^#+\s+\w+/m)
+    expect(res.body).toMatch(/^#+\s+\w+/m) // Check for any markdown heading pattern
 
     expect(res.headers['set-cookie']).toBeUndefined()
     expect(res.headers['cache-control']).toContain('public')
@@ -121,7 +123,7 @@ describe('article body api', () => {
   })
 
   test('codespaces content included in production markdown API', async () => {
-    // This production URL exercises real Codespaces tool content when fixtures can reach it.
+    // Test a real production page that has codespaces content
     const res = await get(
       makeURL(
         '/en/pull-requests/collaborating-with-pull-requests/reviewing-changes-in-pull-requests/reviewing-proposed-changes-in-a-pull-request',
@@ -142,7 +144,8 @@ describe('article body api', () => {
   })
 
   test('verifies original issue #5400 is resolved', async () => {
-    // This production URL verifies the Markdown API includes Codespaces tool content.
+    // This test specifically addresses the original issue where tool picker
+    // content was missing from the Markdown API response
     const res = await get(
       makeURL(
         '/en/pull-requests/collaborating-with-pull-requests/reviewing-changes-in-pull-requests/reviewing-proposed-changes-in-a-pull-request',
@@ -159,6 +162,7 @@ describe('article body api', () => {
     expect(res.statusCode).toBe(200)
     expect(res.headers['content-type']).toContain('text/markdown')
 
+    // The original issue was that only webui content was returned, missing codespaces
     expect(res.body).toContain('<div class="ghd-tool webui">')
     expect(res.body).toContain('<div class="ghd-tool codespaces">')
 

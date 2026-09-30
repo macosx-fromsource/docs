@@ -1,7 +1,7 @@
 #!/usr/bin/env sh
 
-# The production Dockerfile copies only required files, but these scripts still run from the
-# docs-internal root.
+# Called from the production Dockerfile. The Dockerfile only COPYs what it
+# needs, but these scripts still run as if from the docs-internal root.
 
 echo "Fetching and resolving early-access, and translations repos"
 
@@ -9,7 +9,7 @@ set -e
 
 . ./build-scripts/clone-or-use-cached-repo.sh
 
-# Docker build mounts DOCS_BOT_PAT_BASE at /run/secrets/DOCS_BOT_PAT_BASE.
+# From the --secret mounted by the Docker build.
 GITHUB_TOKEN=$(cat /run/secrets/DOCS_BOT_PAT_BASE)
 
 echo "Fetching early access..."
@@ -17,11 +17,11 @@ clone_or_use_cached_repo "docs-early-access" "docs-early-access" "main"
 echo "Merging early access..."
 . ./build-scripts/merge-early-access.sh
 
-# Clone translations under the Dockerfile WORKDIR, the docs-internal root.
+# Clone into `translations/` inside the Dockerfile's WORKDIR, the docs-internal root.
 mkdir -p translations
 cd translations
 
-# Disable exit-on-error so the script can collect every background clone failure.
+# Temporarily turn off exit-on-error so we can collect all PIDs
 set +e
 
 pids=""
@@ -35,6 +35,7 @@ for pid in $pids; do
   wait "$pid" || failures=$((failures+1))
 done
 
+# Restore strict mode
 set -e
 
 if [ "$failures" -gt 0 ]; then
@@ -44,12 +45,8 @@ else
   echo "✅  All translations fetched."
 fi
 
-# The Dockerfile copies translations/ into the image, and each .git/config keeps
-# the token-bearing clone URL. Nothing reads translation git metadata at runtime.
-rm -rf ./*/.git
-
-# Return to the docs-internal root after cloning translations.
+# Go back to the root of the docs-internal repo
 cd ..
 
-# Remove the token from the shell environment.
+# Don't leave the token in the environment.
 unset GITHUB_TOKEN

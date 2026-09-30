@@ -55,8 +55,7 @@ This uses {% data variables.product.prodname_dotcom %} in content.
 
     const expandedContent = await fs.readFile(testFile, 'utf8')
     expect(expandedContent).not.toBe(testContent)
-    // The fixture data tag expands to GitHub.
-    expect(expandedContent).toContain('GitHub')
+    expect(expandedContent).toContain('GitHub') // Should expand to actual fixture value
   })
 
   test('restore command should complete successfully', async () => {

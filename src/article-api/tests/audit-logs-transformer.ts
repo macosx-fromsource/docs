@@ -33,6 +33,7 @@ describe('Audit Logs transformer', () => {
 
     expect(res.body).toContain('## Audit log events')
 
+    // The template renders "### Category"
     expect(res.body).toMatch(/### \w+/)
   })
 
@@ -66,6 +67,7 @@ describe('Audit Logs transformer', () => {
     )
     expect(res.statusCode).toBe(200)
 
+    // #### `action.name`
     expect(res.body).toMatch(/#### `[\w.]+`/)
 
     const body = res.body
@@ -82,7 +84,7 @@ describe('Audit Logs transformer', () => {
       expect(commonFieldsSection).toContain('`action`')
     }
 
-    // Common fields render once in their own section, never repeated per event.
+    // Common fields are listed once in their own section, never repeated per event.
     if (hasAdditionalFields) {
       const additionalSections = body.split('**Additional fields:**').slice(1)
       for (const section of additionalSections) {
@@ -100,6 +102,7 @@ describe('Audit Logs transformer', () => {
     )
     expect(res.statusCode).toBe(200)
 
+    // The source file has manual content before the marker
     expect(res.body).toContain('## About security log events')
   })
 })

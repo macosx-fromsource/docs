@@ -1,5 +1,7 @@
-// @purpose Writer tool
-// @description Create a properly formatted Call-to-Action URL with tracking parameters
+/**
+ * @purpose Writer tool
+ * @description Create a properly formatted Call-to-Action URL with tracking parameters
+ */
 import { Command } from 'commander'
 import readline from 'readline'
 import chalk from 'chalk'
@@ -90,7 +92,7 @@ program.action(() => {
   interactiveBuilder()
 })
 
-// Avoid parsing CLI arguments when tests import this module.
+// Only run CLI when script is executed directly, not when imported
 if (import.meta.url === `file://${process.argv[1]}`) {
   program.parse()
 }
@@ -104,7 +106,7 @@ async function selectFromOptions(
   console.log(chalk.yellow(`\n${message} (${paramName}):`))
   for (let index = 0; index < options.length; index++) {
     const option = options[index]
-    const letter = String.fromCharCode(97 + index) // 97 is the ASCII code for a.
+    const letter = String.fromCharCode(97 + index) // 97 is 'a' in ASCII
     console.log(chalk.white(`  ${letter}. ${option}`))
   }
 
@@ -113,7 +115,7 @@ async function selectFromOptions(
     const answer = await promptFn('Enter the letter of your choice: ')
     if (!answer) continue
 
-    const letterIndex = answer.toLowerCase().charCodeAt(0) - 97
+    const letterIndex = answer.toLowerCase().charCodeAt(0) - 97 // Convert letter to index
 
     if (letterIndex >= 0 && letterIndex < options.length && answer.length === 1) {
       return options[letterIndex]
@@ -122,7 +124,7 @@ async function selectFromOptions(
     const validLetters = options.map((_, index) => String.fromCharCode(97 + index)).join(', ')
     console.log(chalk.red(`Invalid choice. Please enter one of: ${validLetters}`))
 
-    // Cap invalid answers for automated runs; empty answers reprompt without counting.
+    // Safety: prevent infinite loops in automated scenarios
     if (++attempts > 50) {
       throw new Error('Too many invalid attempts. Please restart the tool.')
     }
@@ -143,7 +145,7 @@ async function confirmChoice(
     if (lower === 'n' || lower === 'no') return false
     console.log(chalk.red('Please enter y or n'))
 
-    // Cap invalid answers for automated runs; empty answers reprompt without counting.
+    // Safety: prevent infinite loops in automated scenarios
     if (++attempts > 50) {
       throw new Error('Too many invalid attempts. Please restart the tool.')
     }
@@ -174,6 +176,7 @@ interface AjvError {
   params: AjvErrorParams
 }
 
+// Process AJV validation errors into readable messages
 function formatValidationErrors(ctaParams: CTAParams, errors: AjvError[]): string[] {
   const errorMessages: string[] = []
   for (const error of errors) {
@@ -195,6 +198,7 @@ function formatValidationErrors(ctaParams: CTAParams, errors: AjvError[]): strin
   return errorMessages
 }
 
+// Full validation using AJV schema (consistent across all commands)
 function validateCTAParams(params: CTAParams): { isValid: boolean; errors: string[] } {
   const isValid = validateCTASchema(params)
   const ajvErrors = validateCTASchema.errors || []
@@ -230,7 +234,7 @@ export function convertOldCTAUrl(oldUrl: string): { newUrl: string; notes: strin
 
     const newParams: CTAParams = {}
 
-    // Keep CTA params that already pass the schema.
+    // Preserve any new-style params that are already on the URL.
     for (const [key, value] of url.searchParams.entries()) {
       for (const param of Object.keys(ctaSchema.properties)) {
         if (key === param && key in ctaSchema.properties) {
@@ -273,7 +277,7 @@ export function convertOldCTAUrl(oldUrl: string): { newUrl: string; notes: strin
       }
     }
 
-    // Keep existing query parameters except ref_cta, ref_loc, and ref_page.
+    // Build new URL - preserve all existing parameters except old ref_ parameters
     const newUrl = new URL(url.toString())
 
     newUrl.searchParams.delete('ref_cta')
@@ -286,12 +290,15 @@ export function convertOldCTAUrl(oldUrl: string): { newUrl: string; notes: strin
       }
     }
 
-    // URL serializes github.com?foo as github.com/?foo; preserve the original slash shape.
+    // The URL constructor may add a slash before the question mark in
+    // "github.com?foo", but we don't want that. First, check if original
+    // URL had trailing slash before query params.
     const urlBeforeQuery = oldUrl.split('?')[0]
     const hadTrailingSlash = urlBeforeQuery.endsWith('/')
 
     let finalUrl = newUrl.toString()
 
+    // Remove unwanted trailing slash if original didn't have one.
     if (!hadTrailingSlash && finalUrl.includes('/?')) {
       finalUrl = finalUrl.replace('/?', '?')
     }
@@ -314,19 +321,19 @@ function inferProductFromUrl(url: string, refCta: string): string {
   try {
     hostname = new URL(url).hostname.toLowerCase()
   } catch {
-    // Invalid URLs fall back to ref_cta or the default product.
+    // Fallback if url isn't valid: leave hostname empty
   }
   if (hostname === 'desktop.github.com' || refCta.includes('desktop')) {
     return 'desktop'
   }
-  // GitHub subdomains containing copilot and ref_cta values containing copilot map to copilot.
+  // Hostname contains 'copilot' (e.g., copilot.github.com), or refCta mentions copilot
   if (
     (hostname.includes('copilot') && hostname.endsWith('.github.com')) ||
     refCta.toLowerCase().includes('copilot')
   ) {
     return 'copilot'
   }
-  // GitHub subdomains containing enterprise and ref_cta values containing GHEC map to ghec.
+  // Hostname contains 'enterprise' (e.g. enterprise.github.com), or refCta mentions GHEC
   if (
     (hostname.includes('enterprise') && hostname.endsWith('.github.com')) ||
     refCta.includes('GHEC')
@@ -337,7 +344,8 @@ function inferProductFromUrl(url: string, refCta: string): string {
 }
 
 function inferStyleFromContext(refLoc: string): string {
-  // Button-like ref_loc values map to button; everything else defaults to text.
+  // If location suggests it's in a button context, return button
+  // Otherwise default to text for inline links
   const isButton = buttonKeywords.some((keyword) => refLoc.toLowerCase().includes(keyword))
   return isButton ? 'button' : 'text'
 }
@@ -385,6 +393,7 @@ async function interactiveBuilder(): Promise<void> {
       )
     }
 
+    // Optional parameters (properties not in required array)
     console.log(chalk.white(`\nOptional parameters:\n`))
 
     const allProperties = Object.keys(ctaSchema.properties)
@@ -449,6 +458,7 @@ async function convertUrls(options: { url?: string; quiet?: boolean }): Promise<
       const result = convertOldCTAUrl(options.url)
 
       if (options.quiet) {
+        // In quiet mode, only output the new URL
         console.log(result.newUrl)
         return
       }
@@ -459,6 +469,7 @@ async function convertUrls(options: { url?: string; quiet?: boolean }): Promise<
       console.log(chalk.white('\nNew URL:'))
       console.log(chalk.cyan(result.newUrl))
 
+      // Validate the converted URL using shared validation function
       try {
         const newParams = extractCTAParams(result.newUrl)
         const validation = validateCTAParams(newParams)
@@ -496,7 +507,7 @@ async function convertUrls(options: { url?: string; quiet?: boolean }): Promise<
     }
   }
 
-  // The convert command opens no readline handle, so Node exits after logging.
+  // The convert command doesn't use readline, so script should exit naturally
 }
 
 async function validateUrl(options: { url?: string }): Promise<void> {
@@ -520,6 +531,7 @@ async function validateUrl(options: { url?: string }): Promise<void> {
         return
       }
 
+      // Validate against schema using shared validation function
       const validation = validateCTAParams(ctaParams)
 
       if (validation.isValid) {
@@ -583,6 +595,7 @@ async function buildProgrammaticCTA(options: {
 
     const validation = validateCTAParams(params)
     if (!validation.isValid) {
+      // Output validation errors to stderr and exit with error code
       for (const error of validation.errors) {
         console.error(`Validation error: ${error}`)
       }

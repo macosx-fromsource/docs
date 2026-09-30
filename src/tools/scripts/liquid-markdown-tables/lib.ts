@@ -1,7 +1,7 @@
-// Matches a standalone ifversion line, such as {%- ifversion dependency-review-action-licenses %}.
+// E.g. `{%- ifversion dependency-review-action-licenses %}\n`
 const ifVersionRegex = /^{%-?\s*ifversion\s+([\w- ]+)\s*-?%}\n/
 const ifVersionEndRegex = /\|({%-?\s*ifversion\s+([\w- ]+)\s*-?%})\n/
-// Matches a row ending in endif plus ifversion, such as |{% endif %}{% ifversion foo %}.
+// E.g. `... |{% endif %}{% ifversion dependency-review-action-fail-on-scopes %}\n`
 const endifIfVersionRegex = /\|({%-?\s*endif\s*%})({%-?\sifversion\s+([\w- ]+)\s*-?%})\n/
 const endifRegex = /\|({%-?\s*endif\s*%})\n/
 const endifAloneRegex = /^({%-?\s*endif\s*%})\n/
@@ -40,7 +40,7 @@ export async function processFile(content: string) {
         inTable = false
       }
       if (inTable) {
-        // Standalone ifversion tags become their own table rows.
+        // E.g. `{%- ifversion dependency-review-action-licenses %}\n`
         if (ifVersionRegex.test(line)) {
           const better = line.replace('{%-', '{%').replace('-%}', '%}').trim()
           line = `| ${better} |\n`

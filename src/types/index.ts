@@ -1,2 +1,2 @@
-// Keep this barrel so existing @/types imports keep working.
+// Kept so existing `@/types` imports keep working.
 export * from './types'

@@ -38,11 +38,12 @@ export default async function journeyTrack(
     if (page.journeyTracks) {
       const resolvedTracks = await resolveJourneyTracks(page.journeyTracks, req.context)
 
-      // getServerSideProps reads resolvedJourneyTracks from the page object.
+      // Read later by getServerSideProps.
       page.resolvedJourneyTracks = resolvedTracks
     }
 
-    // Resolve every article because guide pages do not carry their own journeyTracks.
+    // Unconditional, because guide articles need this
+    // even though they carry no journeyTracks of their own.
     const journeyContext = await resolveJourneyContext(
       req.pagePath || '',
       req.context.pages || {},

@@ -1,4 +1,4 @@
-// Run with npm run liquid-markdown-tables -- convert content/path/to/article.md.
+// See the comment at the top of index.ts for how to use this script.
 import fs from 'fs'
 
 import chalk from 'chalk'

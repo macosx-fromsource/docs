@@ -86,7 +86,8 @@ describe(liquidIfversionVersions.names.join(' - '), () => {
   })
 
   test('ifversion all shortnames and an almost oldest ghes', async () => {
-    // The oldest ghes remains excluded, so the ifversion tag still changes content.
+    // Note that this will mean version will not catch the oldest version
+    // of ghes, so something is actually excluded by the ifversion tag.
     const markdown = [
       ...placeholderAllVersionsFm,
       `{% ifversion ghec or fpt or ghes >${supported.at(-1)} %}{% endif %}`,
@@ -100,7 +101,7 @@ describe(liquidIfversionVersions.names.join(' - '), () => {
   })
 
   test.skip('ifversion using feature based version with all versions', async () => {
-    // features/them-and-all.yml covers all versions.
+    // That `features/them-and-all.yml` uses all versions.
     const markdown = [...placeholderAllVersionsFm, `{% ifversion them-and-all %}{% endif %}`].join(
       '\n',
     )
@@ -113,7 +114,7 @@ describe(liquidIfversionVersions.names.join(' - '), () => {
   })
 
   test.skip('ifversion using feature based version extended with shortname all versions', async () => {
-    // features/volvo.yml contains fpt: "*" and ghec: "*".
+    // That `features/volvo.yml` contains `fpt:'*', ghec:'*'`.
     const markdown = `
       {% ifversion volvo or ghes %}{% endif %}
     `
@@ -151,6 +152,7 @@ describe(liquidIfversionVersions.names.join(' - '), () => {
     const result = await runRule(liquidIfversionVersions, {
       strings: { markdown },
     })
+    // No crash; zero errors expected for valid ifversion usage
     const errors = result.markdown
     expect(errors.length).toBe(0)
   })

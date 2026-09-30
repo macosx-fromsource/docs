@@ -6,11 +6,13 @@ describe('breadcrumbs', () => {
   test('links always prefixed with language', async () => {
     const $ = await getDOM('/get-started/start-your-journey/hello-world')
     const links = $('[data-testid=breadcrumbs-bar] a')
-    // The current article is static text, so only Home and two ancestors are links.
+    // Home and the two ancestors are links; the current article is static text.
     expect(links.length).toBe(3)
     links.each((i, element) => {
       const href = $(element).attr('href')!
-      // Home uses /en; every other crumb starts with /en/.
+      // The Home crumb points at the locale root (`/en` on the default version,
+      // no trailing slash); every other crumb is under `/en/…`. Both are
+      // language-prefixed, which is what this test guards.
       expect(href === '/en' || href.startsWith('/en/')).toBe(true)
     })
   })
@@ -43,7 +45,7 @@ describe('breadcrumbs', () => {
     expect(current.text()).toBe('Hello World')
     expect(current.is('a')).toBe(false)
     expect(current.attr('href')).toBeUndefined()
-    // The secondary bar shows the full trail, including the last crumb.
+    // The secondary-bar variant shows the full trail (no hidden last crumb).
     expect(current.hasClass('d-none')).toBe(false)
   })
 

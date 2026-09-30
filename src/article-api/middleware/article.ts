@@ -19,8 +19,10 @@ import statsd from '@/observability/lib/statsd'
 
 const router = express.Router()
 
-// All /api/article routes validate pathname structure before page lookup.
-// pageValidationMiddleware returns 404 when the pagelist cannot resolve the path.
+// For all these routes in `/api/article`:
+// - pathValidationMiddleware ensures the path is properly structured and handles errors when it's not
+// - pageValidationMiddleware fetches the page from the pagelist, returns 404 to the user if not found
+
 /**
  * Get article metadata and content in a single object. Equivalent to calling `/article/meta` concatenated with `/article/body`.
  * @route GET /api/article
@@ -106,8 +108,6 @@ router.get(
   }),
 )
 
-// /api/article/meta sets a language surrogate key because /api URLs lack a language segment.
-// Fastly needs the key for staggered language purges.
 /**
  * Get metadata about an article.
  * @route GET /api/article/meta
@@ -148,6 +148,13 @@ router.get(
     incrementArticleLookup(req, 'meta', cacheInfo)
     defaultCacheControl(res)
 
+    // This is necessary so that the `Surrogate-Key` header is set with
+    // the correct language surrogate key bit. By default, it's set
+    // from the pathname but `/api/**` URLs don't have a language
+    // (other than the default 'en').
+    // We do this so that all of these URLs are cached in Fastly by language
+    // which we need for the staggered purge.
+
     setFastlySurrogateKey(
       res,
       makeLanguageSurrogateKey(req.pageinfo?.page?.languageCode || 'en'),
@@ -157,9 +164,7 @@ router.get(
   }),
 )
 
-// Keep Datadog metric tags consistent across Article API endpoints.
-// Datadog tags max at 200 characters, so path and source tags are truncated.
-// See https://docs.datadoghq.com/getting_started/tagging/#define-tags
+// this helps us standardize calls to our datadog agent for article api purposes
 function incrementArticleLookup(
   req: ExtendedRequestWithPageInfo,
   type: 'full' | 'body' | 'meta',
@@ -168,7 +173,8 @@ function incrementArticleLookup(
   const pathname = req.pageinfo.pathname
   const language = req.pageinfo.page?.languageCode || 'en'
 
-  // Hovercards set X-Request-Source; src/links/components/LinkPreviewPopover.tsx sends the header.
+  // logs the source of the request, if it's for hovercards it'll have the header X-Request-Source.
+  // see src/links/components/LinkPreviewPopover.tsx
   let source = req.get('X-Request-Source')
   if (!source) {
     const referer = req.get('Referer')
@@ -184,13 +190,16 @@ function incrementArticleLookup(
   }
 
   const tags = [
+    // According to https://docs.datadoghq.com/getting_started/tagging/#define-tags
+    // the max length of a tag is 200 characters. Most of ours are less than
+    // that but we truncate just to be safe.
     `pathname:${pathname}`.slice(0, 200),
     `language:${language}`,
     `type:${type}`,
     `source:${source}`.slice(0, 200),
   ]
 
-  // Full and metadata lookups include page-info cache status.
+  // the /article/meta endpoint uses a cache
   if (cacheInfo) tags.push(`cache:${cacheInfo}`)
 
   statsd.increment('api.article.lookup', 1, tags)

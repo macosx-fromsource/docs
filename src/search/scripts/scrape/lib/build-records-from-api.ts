@@ -29,60 +29,62 @@ import type {
   Redirects,
 } from '@/search/scripts/scrape/types'
 
-// The rehype alerts plugin only runs in the HTML pipeline, so GitHub-style alert
-// markers such as > [!NOTE] reach the markdown-only output as literal text.
-// Strip them so they stay out of search results.
+// The rehype alerts plugin only runs in the HTML pipeline, so GitHub-style
+// alert markers such as `> [!NOTE]` reach the markdown-only output as literal
+// text. Strip them so they stay out of search results.
 const ALERT_MARKER_REGEXP = /\[!(NOTE|TIP|WARNING|IMPORTANT|CAUTION)\]\n?/gi
 
-// Match the HTML scraper's ignored navigation headings.
+// Same ignored headings as the HTML scraping approach
 const IGNORED_HEADING_SLUGS = new Set(['in-this-article', 'further-reading', 'prerequisites'])
 
-// Fallback translations catch ignored headings when github-slugger emits non-ASCII slugs.
+// Known translations of the 3 ignored navigational headings.
+// These are used as a fallback when github-slugger produces non-ASCII slugs
+// that don't match the English slug set above.
 const IGNORED_HEADING_TEXTS = new Set([
-  // English, lowercase
+  // English (lowercase)
   'in this article',
   'further reading',
   'prerequisites',
-  // Japanese, ja
+  // Japanese (ja)
   'この記事の内容',
   '参考資料',
   '前提条件',
-  // Chinese, zh
+  // Chinese (zh)
   '本文内容',
   '延伸阅读',
   '先决条件',
-  // Korean, ko
+  // Korean (ko)
   '이 문서의 내용',
   '추가 참고 자료',
   '필수 조건',
-  // Spanish, es
+  // Spanish (es)
   'en este artículo',
   'información adicional',
   'requisitos previos',
-  // Portuguese, pt
+  // Portuguese (pt)
   'neste artigo',
   'leitura adicional',
   'pré-requisitos',
-  // Russian, ru
+  // Russian (ru)
   'в этой статье',
   'дополнительные материалы',
   'необходимые компоненты',
-  // French, fr
+  // French (fr)
   'dans cet article',
   'pour aller plus loin',
   'prérequis',
-  // German, de
+  // German (de)
   'in diesem artikel',
   'weiterführende themen',
   'voraussetzungen',
 ])
 
-// Default port matches the general-search-scrape-server package script.
+// Default port matches build-records.ts for consistency
 const DEFAULT_PORT = 4002
 
 dotenv.config()
 
-// Use these request pacing defaults because they work in GitHub Actions.
+// These defaults are known to work fine in GitHub Actions.
 const MAX_CONCURRENT = parseInt(process.env.BUILD_RECORDS_MAX_CONCURRENT || '5', 10)
 const MIN_TIME = parseInt(process.env.BUILD_RECORDS_MIN_TIME || '200', 10)
 
@@ -119,8 +121,10 @@ function parseMarkdown(markdown: string) {
   })
 }
 
-// Block containers need newlines between children because toString() would otherwise
-// produce tokens such as SSH.Make that the Elasticsearch tokenizer cannot split.
+// Block container types whose children should be separated by newlines.
+// These contain other block-level nodes (paragraphs, lists, etc.) and
+// toString() would concatenate them without whitespace, producing tokens
+// like "SSH.Make" that the ES tokenizer can't split.
 const BLOCK_CONTAINER_TYPES = new Set([
   'root',
   'blockquote',
@@ -144,13 +148,14 @@ function astToPlainText(node: Node): string {
     return parent.children.map((child) => astToPlainText(child)).join('\n')
   }
 
-  // Leaf blocks such as paragraph, heading, and tableCell, plus inline nodes, concatenate text directly.
+  // Leaf blocks (paragraph, heading, tableCell) and inline nodes:
+  // concatenate inline text directly.
   return toString(node)
 }
 
 // Parses the markdown once, then extracts both headings and plain-text
 // content from the tree. Code blocks stay in the text so terms that only
-// appear in an example, such as ssh_url or ssh://, stay searchable.
+// appear in an example, such as `ssh_url` or `ssh://`, stay searchable.
 export function extractFromMarkdown(markdown: string): { headings: string; content: string } {
   const ast = parseMarkdown(markdown)
 
@@ -165,7 +170,7 @@ export function extractFromMarkdown(markdown: string): { headings: string; conte
     const headingText = toString(node)
     const slug = slugger.slug(headingText)
 
-    // Skip navigational headings by slug or known translated text.
+    // Skip navigational headings by slug or known translated text
     if (IGNORED_HEADING_SLUGS.has(slug)) return
     if (IGNORED_HEADING_TEXTS.has(headingText.toLowerCase().trim())) return
 
@@ -177,7 +182,8 @@ export function extractFromMarkdown(markdown: string): { headings: string; conte
   return { headings: headings.join('\n'), content }
 }
 
-// Reuses extractFromMarkdown so navigational heading filters stay in one place.
+// Extracts h2 headings, minus the navigational ones: in-this-article,
+// further-reading and prerequisites.
 export function extractHeadingsFromMarkdown(markdown: string): string {
   return extractFromMarkdown(markdown).headings
 }
@@ -243,7 +249,7 @@ export async function fetchArticleAsRecord(
           errorType = 'API Error'
         }
       } catch {
-        // Ignore JSON parse errors so HTTP status fallback remains available.
+        /* ignore JSON parse errors */
       }
       return {
         record: null,
@@ -275,7 +281,8 @@ export async function fetchArticleAsRecord(
     const errorName = error instanceof Error ? error.name : undefined
     const errorCode = (error as { code?: string }).code
 
-    // Prefer structured timeout indicators, with message text as the fallback.
+    // Prefer structured timeout indicators (name/code), with a documented
+    // fallback to message inspection for environments that only expose text.
     const isTimeout =
       errorName === 'AbortError' ||
       errorCode === 'ETIMEDOUT' ||
@@ -298,7 +305,7 @@ export interface BuildRecordsResult {
   failedPages: FailedPage[]
 }
 
-// Returns records and failures together so index workflows can publish partial results and alerts.
+// A drop-in replacement for buildRecords in build-records.ts.
 export default async function buildRecordsFromApi(
   indexName: string,
   indexablePages: Page[],
@@ -319,7 +326,9 @@ export default async function buildRecordsFromApi(
     .filter((page) => page.languageCode === languageCode)
     .filter((page) => page.permalinks.some((permalink) => permalink.pageVersion === pageVersion))
 
-  // Deduplicate permalinks by href, because cross-product children can repeat a page.
+  // Get permalinks for this language and version, deduplicating by href.
+  // Cross-product children can cause the same page to appear multiple
+  // times in the tree under different parents.
   const seen = new Set<string>()
   const permalinks = pages
     .map((page) =>

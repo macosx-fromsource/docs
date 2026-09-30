@@ -34,6 +34,7 @@ describe('GraphQL transformer', { timeout: 10000 }, () => {
 
       expect(res.body).toContain('# Repositories')
 
+      // Items render as flat alphabetical level 2 headings with a kind suffix
       expect(res.body).toContain('## createRepository - mutation')
       expect(res.body).toContain('## repository - query')
     })
@@ -42,6 +43,7 @@ describe('GraphQL transformer', { timeout: 10000 }, () => {
       const res = await getCached('/en/graphql/reference/repos')
       expect(res.statusCode).toBe(200)
 
+      // Item headings are now at level 3
       expect(res.body).toContain('## repository - query')
 
       expect(res.body).toContain('Lookup a given repository by the owner and repository name.')
@@ -53,6 +55,7 @@ describe('GraphQL transformer', { timeout: 10000 }, () => {
       const res = await getCached('/en/graphql/reference/meta')
       expect(res.statusCode).toBe(200)
 
+      // codeOfConduct query is in the meta category
       expect(res.body).toContain('### Arguments for `codeOfConduct`')
 
       expect(res.body).toContain('`key` (String!)')
@@ -63,6 +66,7 @@ describe('GraphQL transformer', { timeout: 10000 }, () => {
       const res = await getCached('/en/graphql/reference/repos')
       expect(res.statusCode).toBe(200)
 
+      // Mutation heading (level 3) and surrounding sections (level 4)
       expect(res.body).toContain('## createRepository - mutation')
       expect(res.body).toContain('Create a new repository.')
       expect(res.body).toContain('### Input fields for `createRepository`')
@@ -76,6 +80,7 @@ describe('GraphQL transformer', { timeout: 10000 }, () => {
       const res = await getCached('/en/graphql/reference/pulls')
       expect(res.statusCode).toBe(200)
 
+      // AddedToMergeQueueEvent is in the pulls category and implements Node
       expect(res.body).toContain('## AddedToMergeQueueEvent - object')
       expect(res.body).toContain('**Implements:** Node')
       expect(res.body).toContain('### Fields for `AddedToMergeQueueEvent`')
@@ -88,6 +93,7 @@ describe('GraphQL transformer', { timeout: 10000 }, () => {
       const res = await getCached('/en/graphql/reference/users')
       expect(res.statusCode).toBe(200)
 
+      // User object lives in the users category
       expect(res.body).toContain('## User - object')
       expect(res.body).toContain('`repositories`')
 
@@ -111,6 +117,7 @@ describe('GraphQL transformer', { timeout: 10000 }, () => {
       const res = await getCached('/en/graphql/reference/repos')
       expect(res.statusCode).toBe(200)
 
+      // RepositoryVisibility is in the repos category
       expect(res.body).toContain('## RepositoryVisibility - enum')
       expect(res.body).toContain("The repository's visibility level.")
       expect(res.body).toContain('### Values for `RepositoryVisibility`')
@@ -148,7 +155,7 @@ describe('GraphQL transformer', { timeout: 10000 }, () => {
       const res = await getCached('/en/graphql/reference/other')
       expect(res.statusCode).toBe(200)
 
-      // Built-in scalars are uncategorized and land in "other".
+      // Built-in scalars are uncategorized and end up in "other"
       expect(res.body).toContain('## Boolean - scalar')
       expect(res.body).toContain('Represents true or false values.')
       expect(res.body).toContain('## String - scalar')
@@ -181,6 +188,7 @@ describe('GraphQL transformer', { timeout: 10000 }, () => {
         'Breaking changes include changes that will break existing queries',
       )
 
+      // Index page shows latest year (2026) entries only
       expect(res.body).toContain('## Schema changes for 2026-')
 
       expect(res.body).toContain('### The GraphQL schema includes these changes:')
@@ -204,6 +212,7 @@ describe('GraphQL transformer', { timeout: 10000 }, () => {
     })
 
     test('changelog removes HTML tags from changes', async () => {
+      // The 2025 fixture is the one whose change descriptions contain HTML.
       const res = await getCached('/en/graphql/overview/changelog/2025')
       expect(res.statusCode).toBe(200)
 
@@ -253,8 +262,9 @@ describe('GraphQL transformer', { timeout: 10000 }, () => {
   })
 
   describe('Liquid tags', () => {
-    // The repos category page renders its landing markdown, including any AUTOTITLE links.
     test('AUTOTITLE links are resolved in manual content', async () => {
+      // The repos category page renders the manual content section of its
+      // landing markdown, including AUTOTITLE links if present.
       const res = await getCached('/en/graphql/reference/repos')
       expect(res.statusCode).toBe(200)
 
@@ -265,6 +275,7 @@ describe('GraphQL transformer', { timeout: 10000 }, () => {
       const res = await getCached('/en/graphql/reference')
       expect(res.statusCode).toBe(200)
 
+      // Liquid variables should be rendered
       expect(res.body).toMatch(/(GitHub|HubGit) GraphQL API schema/)
       expect(res.body).not.toContain('{% data variables.product.prodname_dotcom %}')
     })
@@ -283,6 +294,7 @@ describe('GraphQL transformer', { timeout: 10000 }, () => {
       const res = await getCached('/en/graphql/reference/repos')
       expect(res.statusCode).toBe(200)
 
+      // Multiple repos-category queries appear as level 3 headings
       expect(res.body).toContain('## repository - query')
       expect(res.body).toContain('## repositoryOwner - query')
     })
@@ -291,6 +303,7 @@ describe('GraphQL transformer', { timeout: 10000 }, () => {
       const res = await getCached('/en/graphql/reference/repos')
       expect(res.statusCode).toBe(200)
 
+      // Repos-category object headings
       expect(res.body).toContain('## Language - object')
       expect(res.body).toContain('## ContributingGuidelines - object')
     })
@@ -299,6 +312,7 @@ describe('GraphQL transformer', { timeout: 10000 }, () => {
       const res = await getCached('/en/graphql/reference/repos')
       expect(res.statusCode).toBe(200)
 
+      // Repos-category enum headings
       expect(res.body).toContain('## RepositoryVisibility - enum')
       expect(res.body).toContain('## CollaboratorAffiliation - enum')
     })

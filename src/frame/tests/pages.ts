@@ -57,7 +57,7 @@ describe('pages module', () => {
       const redirectToFiles = new Map<string, Set<string>>()
       const versionedRedirects: Array<{ path: string; file: string }> = []
 
-      // lodash pick loses the concrete Page fields that the redirect loop needs.
+      // Page objects have dynamic properties from chain/lodash that aren't fully typed
       for (const page of englishPages) {
         const pageObj = page as Record<string, unknown>
         for (const redirect of pageObj.redirect_from as string[]) {
@@ -72,7 +72,7 @@ describe('pages module', () => {
         }
       }
 
-      // A redirect duplicates only when more than one file defines it.
+      // Only consider as duplicate if more than one unique file defines the same redirect
       const duplicates = Array.from(redirectToFiles.entries())
         .filter(([, files]) => files.size > 1)
         .map(([redirectPath]) => redirectPath)
@@ -93,15 +93,15 @@ describe('pages module', () => {
         .filter((page) => {
           slugger.reset()
           return (
-            page.languageCode === 'en' && // Only English pages enforce filename-title matching.
-            !page.relativePath.includes('index.md') && // TOCs do not use slugified filenames.
-            // Page has dynamic frontmatter properties that its type omits.
-            !(page as Record<string, unknown>).allowTitleToDifferFromFilename && // Allows override.
+            page.languageCode === 'en' && // only check English
+            !page.relativePath.includes('index.md') && // ignore TOCs
+            // Page class has dynamic frontmatter properties like 'allowTitleToDifferFromFilename' not in type definition
+            !(page as Record<string, unknown>).allowTitleToDifferFromFilename && // ignore docs with override
             slugger.slug(decode(page.title)) !== path.basename(page.relativePath, '.md') &&
             slugger.slug(decode(page.shortTitle || '')) !== path.basename(page.relativePath, '.md')
           )
         })
-        // Format failures for review.
+        // make the output easier to read
         .map((page) => {
           return JSON.stringify(
             {
@@ -124,11 +124,30 @@ describe('pages module', () => {
       expect(nonMatches.length, message).toBe(0)
     })
 
+    test('every page has valid frontmatter', async () => {
+      const frontmatterErrors = chain(pages)
+        // Page class has dynamic error properties like 'frontmatterErrors' not in type definition
+        .map((page) => (page as Record<string, unknown>).frontmatterErrors)
+        .filter(Boolean)
+        .flatten()
+        .value()
+
+      const failureMessage = `${JSON.stringify(frontmatterErrors, null, 2)}\n\n${chain(
+        frontmatterErrors,
+      )
+        .map('filepath')
+        .join('\n')
+        .value()}`
+
+      expect(frontmatterErrors.length, failureMessage).toBe(0)
+    })
+
     test('every page has valid Liquid templating', async () => {
       const liquidErrors: Array<{ filename: string; error: string }> = []
 
       for (const page of pages) {
-        const markdown = page.markdown
+        // Page class has dynamic properties like 'raw' markdown not in type definition
+        const markdown = (page as Record<string, unknown>).raw as string
         if (!patterns.hasLiquid.test(markdown)) continue
         try {
           await liquid.parse(markdown)

@@ -1,6 +1,12 @@
-// Required env variable: GITHUB_TOKEN.
-// Syncs https://github.com/github/token-scanning-service/blob/main/docs/public-docs into
-// src/secret-scanning/data/pattern-docs.
+/**
+ * Required env variables:
+ *
+ * GITHUB_TOKEN
+ *
+ * Syncs the
+ * https://github.com/github/token-scanning-service/blob/main/docs/public-docs
+ * directory to src/secret-scanning/data/pattern-docs
+ */
 import { writeFile, mkdir } from 'fs/promises'
 import { load, dump } from 'js-yaml'
 import path from 'path'

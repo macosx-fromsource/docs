@@ -18,7 +18,7 @@ interface RedirectMap {
   [oldUrl: string]: string
 }
 
-// Client-side redirects preserve legacy REST URL fragments in the browser.
+// Adds redirects from one URL fragment to another, applied in the browser.
 export async function syncRestRedirects(): Promise<void> {
   const clientSideRedirects = await getClientSideRedirects()
 
@@ -26,6 +26,8 @@ export async function syncRestRedirects(): Promise<void> {
   console.log(`✅ Wrote ${STATIC_REDIRECTS}`)
 }
 
+// Reads in src/rest/lib/rest-api-overrides.json and generates the
+// redirect file src/rest/data/client-side-rest-api-redirects.json
 async function getClientSideRedirects(): Promise<RedirectMap> {
   const { operationUrls, sectionUrls }: RestApiOverrides = JSON.parse(
     await readFile(REST_API_OVERRIDES, 'utf8'),

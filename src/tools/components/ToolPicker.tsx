@@ -3,16 +3,18 @@ import { InArticlePicker } from './InArticlePicker'
 import { useSelection } from './SelectionContext'
 import { TOOL_PREFERRED_COOKIE_NAME } from '@/frame/lib/constants'
 
-// Example tool picker page: /en/codespaces/developing-in-codespaces/creating-a-codespace
-// Content calls this preference tool, but the stored preference name is application.
+// Example page with a tool picker:
+// http://localhost:4000/en/codespaces/developing-in-codespaces/creating-a-codespace
+
+// Note: tool === application, and picker === switcher
 
 function getDefaultTool(defaultTool: string | undefined, detectedTools: Array<string>): string {
   if (defaultTool && detectedTools.includes(defaultTool)) return defaultTool
 
-  // UI, CLI, and Desktop articles default to webui.
+  // Default to webui if present (this is generally the case where we show UI/CLI/Desktop info)
   if (detectedTools.includes('webui')) return 'webui'
 
-  // Curl and CLI articles default to cli.
+  // Default to cli if present (this is generally the case where we show curl/CLI info)
   if (detectedTools.includes('cli')) return 'cli'
 
   return detectedTools[0]
@@ -35,7 +37,9 @@ export const ToolPicker = () => {
       cookieKey={TOOL_PREFERRED_COOKIE_NAME}
       queryStringKey={toolQueryKey}
       onValue={(value: string) => {
-        // React state drives visibility because the article body is React-owned.
+        // Visibility is driven by React state via ToggleableContent/MiniTocs
+        // (#6619); the article body is React-owned on both the hast and string
+        // paths, so no imperative DOM mutation is needed.
         setTool(value)
       }}
       preferenceName="application"

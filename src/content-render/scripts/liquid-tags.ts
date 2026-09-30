@@ -1,5 +1,7 @@
-// @purpose Writer tool
-// @description Expand and restore Liquid data references in content files
+/*
+ * @purpose Writer tool
+ * @description Expand and restore Liquid data references in content files
+ */
 // Usage: npm run liquid-tags -- expand --paths content/pull-requests/about.md
 // Usage: npm run liquid-tags -- restore --paths content/pull-requests/about.md
 
@@ -36,20 +38,23 @@ function getErrorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error)
 }
 
+// Regex pattern to match expanded content blocks
 const EXPANDED_PATTERN = /<!-- begin (reusable|variable)s\.([^>]+) -->(.+?)<!-- end \1s\.\2 -->/gs
 
-// Reject absolute, traversal, empty, and unsafe data paths before resolving under data root.
+// Validates and normalizes the incoming dataPath to prevent path traversal
+// and ensure the final resolved path remains within the expected root.
 function getDataFilePath(type: 'reusable' | 'variable', dataPath: string): string {
   if (path.isAbsolute(dataPath)) {
     throw new Error(`Invalid ${type} data path: absolute paths are not allowed: ${dataPath}`)
   }
 
+  // Disallow path traversal and empty segments
   const segments = dataPath.split(/[\\/]/)
   if (segments.some((segment) => segment === '..' || segment === '')) {
     throw new Error(`Invalid ${type} data path: contains disallowed segments: ${dataPath}`)
   }
 
-  // Restrict data paths to filename characters used by reusables and variables.
+  // Restrict allowed characters to a conservative safe set
   if (!/^[A-Za-z0-9_.\-/]+$/.test(dataPath)) {
     throw new Error(`Invalid ${type} data path: contains disallowed characters: ${dataPath}`)
   }
@@ -142,11 +147,11 @@ function getAllowedTypes(options: ExpandOptions): Array<'reusable' | 'variable'>
 
 async function expandReferences(options: ExpandOptions): Promise<void> {
   const { paths, verbose, markers, shallow } = options
-  // --no-markers sets markers to false; missing flag leaves it true.
+  // markers will be true by default, false when --no-markers is used
   const withMarkers = markers !== false
-  const recursive = !shallow // Omitting --shallow enables recursive expansion.
+  const recursive = !shallow // Recursive by default unless --shallow is specified
   const allowedTypes = getAllowedTypes(options)
-  const maxIterations = 10 // Stop recursive expansion after 10 passes to avoid circular references.
+  const maxIterations = 10 // Safety limit for recursive expansion
 
   if (paths.length === 0) {
     console.error(chalk.red('Error: No paths provided. Use --paths option.'))
@@ -199,6 +204,7 @@ async function expandReferences(options: ExpandOptions): Promise<void> {
         hasRemainingRefs = remainingRefs.length > 0
 
         if (shallow) {
+          // Shallow mode: show remaining references and break
           if (hasRemainingRefs) {
             console.log(
               chalk.yellow(
@@ -290,10 +296,10 @@ async function restoreReferences(options: ExpandOptions): Promise<void> {
           console.log(chalk.dim('  Use --verbose to see details of the edits'))
         }
 
-        // Write edited expanded blocks back to data files before restoring Liquid tags.
+        // Update data files with the edited content before restoring
         const updatedDataFiles = updateDataFiles(filePath, verbose, false, allowedTypes)
 
-        // Restore updated data files so nested references return to Liquid tags too.
+        // Automatically restore any updated data files back to liquid tags
         if (updatedDataFiles.length > 0) {
           if (verbose)
             console.log(chalk.blue('  Restoring updated data files back to liquid tags...'))
@@ -318,7 +324,7 @@ async function restoreReferences(options: ExpandOptions): Promise<void> {
         }
       }
 
-      // Restore the main file even when no data file changed.
+      // Always restore the main file content regardless of edits
       const restoredContent = restoreFileContent(content, verbose, allowedTypes)
 
       if (restoredContent !== content) {
@@ -408,10 +414,12 @@ async function detectContentEdits(
 
     if (!allowedTypes || allowedTypes.includes(refType)) {
       try {
+        // Load the original content from data files
         const originalContent = loadDataValue(refType, dataPath.trim())
 
         if (originalContent !== null) {
-          // Compare direct data file content to avoid false positives from nested resolution.
+          // Compare against the original content directly, not re-resolved
+          // This avoids nested resolution issues that cause false positives
           const currentContent = resolvedContent.trim()
 
           if (currentContent !== originalContent.trim()) {
@@ -450,7 +458,7 @@ function loadDataValue(type: 'reusable' | 'variable', dataPath: string): string 
 
     if (type === 'reusable') {
       const content = fs.readFileSync(targetPath, 'utf8')
-      // Strip reusable frontmatter before comparing content, matching resolveReusable.
+      // Remove any frontmatter if present (same as resolveReusable)
       const contentWithoutFrontmatter = content.replace(/^---[\s\S]*?---\s*/, '')
       return contentWithoutFrontmatter.trim()
     } else {
@@ -470,7 +478,7 @@ function loadDataValue(type: 'reusable' | 'variable', dataPath: string): string 
       return typeof current === 'string' ? current.trim() : String(current).trim()
     }
   } catch {
-    // Unreadable data returns null so callers can treat it as unverifiable.
+    // Silently return null for any errors
   }
   return null
 }
@@ -553,7 +561,7 @@ function extractDataUpdates(
     const refType = type as 'reusable' | 'variable'
 
     if (!allowedTypes || allowedTypes.includes(refType)) {
-      // Compare expanded blocks with their source before updating data files.
+      // Check if this content was actually changed before including it
       try {
         const originalContent = loadDataValue(refType, dataPath.trim())
         if (originalContent !== null && resolvedContent.trim() !== originalContent.trim()) {
@@ -564,7 +572,7 @@ function extractDataUpdates(
           })
         }
       } catch {
-        // Keep blocks on unexpected errors; unreadable files return null from loadDataValue.
+        // If we can't verify, assume it was changed to be safe
         updates.push({
           type: refType,
           path: dataPath.trim(),
@@ -611,18 +619,19 @@ function applyDataUpdates(
     } else {
       console.log(chalk.green(`  Updated: ${targetPath}`))
     }
-    return targetPath // Dry runs return the target path so callers can report it.
+    return targetPath // Return path even in dry run
   }
 
   try {
     if (type === 'reusable') {
+      // For reusables, replace entire file content
       if (contents.length > 1) {
         console.log(
           chalk.yellow(`  Warning: Multiple content blocks found for ${dataPath}, using first one`),
         )
       }
 
-      // Preserve a trailing newline from the original reusable file.
+      // Preserve original file's newline behavior
       const originalContent = fs.readFileSync(targetPath, 'utf8')
       const hasTrailingNewline = originalContent.endsWith('\n')
       const newContent =
@@ -633,11 +642,12 @@ function applyDataUpdates(
         console.log(chalk.green(`  Updated: ${type}s.${dataPath}`))
       }
     } else {
+      // For variables, update YAML structure
       const yamlContent = fs.readFileSync(targetPath, 'utf8')
       const data = load(yamlContent) as Record<string, unknown>
 
       const pathParts = dataPath.split('.')
-      const propertyPath = pathParts.slice(1)
+      const propertyPath = pathParts.slice(1) // Skip the file name
 
       let current: Record<string, unknown> = data
       for (let i = 0; i < propertyPath.length - 1; i++) {
@@ -655,7 +665,7 @@ function applyDataUpdates(
       }
       current[finalKey] = contents[0]
 
-      // Preserve a trailing newline from the original YAML file.
+      // Preserve original file's newline behavior for YAML
       const hasTrailingNewline = yamlContent.endsWith('\n')
       const yamlOutput = dump(data)
       const finalYaml =
@@ -682,13 +692,13 @@ function findLiquidReferences(
   const references: LiquidReference[] = []
   const types = allowedTypes || ['reusable', 'variable']
 
-  // Match data references for reusables and variables.
+  // Pattern to match {% data reusables.path %} and {% data variables.path %}
   const liquidPattern = /{%\s*data\s+(reusables|variables)\.([^%]+)\s*%}/g
 
   let match
   while ((match = liquidPattern.exec(content)) !== null) {
     const [original, type, dataPath] = match
-    const refType = type.slice(0, -1) as 'reusable' | 'variable'
+    const refType = type.slice(0, -1) as 'reusable' | 'variable' // Remove 's' from end
 
     if (types.includes(refType)) {
       references.push({
@@ -735,7 +745,7 @@ async function resolveReusable(reusablePath: string, verbose?: boolean): Promise
 
   try {
     const content = fs.readFileSync(filePath, 'utf-8')
-    // Strip reusable frontmatter before inserting its body.
+    // Remove any frontmatter if present
     const contentWithoutFrontmatter = content.replace(/^---[\s\S]*?---\s*/, '')
     return contentWithoutFrontmatter.trim()
   } catch (error: unknown) {
@@ -771,8 +781,8 @@ async function resolveVariable(variablePath: string, verbose?: boolean): Promise
     const yamlContent = fs.readFileSync(filePath, 'utf-8')
     const data = load(yamlContent) as Record<string, unknown>
 
-    // Variable paths start with the file name; remaining segments address YAML keys.
-    const [, ...keyPath] = pathParts
+    // Navigate through the key path to find the value
+    const [, ...keyPath] = pathParts // Skip filename, get remaining path
     let value: unknown = data
     for (const key of keyPath) {
       if (value && typeof value === 'object' && key in value) {

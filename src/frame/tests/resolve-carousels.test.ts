@@ -10,7 +10,7 @@ vi.mock('@/frame/lib/find-page', () => ({
 
 vi.mock('@/content-render/index', () => ({
   renderContent: vi.fn((content, _context, options) => {
-    // textOnly returns plain text so carousel intros stay text-only.
+    // When textOnly is true, return plain text (no HTML wrapper)
     if (options?.textOnly) {
       return content
     }
@@ -199,6 +199,7 @@ describe('resolveCarousels middleware', () => {
       req.context!.pages,
       req.context!.redirects,
     )
+    // Carousel should not be added if all articles are not found
     expect(
       (req.context!.page as Page & { carousels?: Record<string, ResolvedArticle[]> }).carousels,
     ).toBeUndefined()
@@ -216,6 +217,7 @@ describe('resolveCarousels middleware', () => {
 
     await resolveCarousels(req, mockRes, mockNext)
 
+    // Should still call next even on error
     expect(mockNext).toHaveBeenCalled()
   })
 
@@ -258,7 +260,7 @@ describe('resolveCarousels middleware', () => {
       applicableVersions: ['free-pro-team@latest'],
     }
 
-    // First lookup is content-relative; second lookup is page-relative.
+    // Mock findPage to fail on first call (content-relative) and succeed on second (page-relative)
     mockFindPage.mockReturnValueOnce(undefined).mockReturnValueOnce(testPage as unknown as Page)
 
     const req = createMockRequest({
@@ -316,6 +318,7 @@ describe('resolveCarousels middleware', () => {
       req.context!.redirects,
     )
 
+    // Verify that the href is a clean path without language/version
     expect(
       (req.context!.page as Page & { carousels?: Record<string, ResolvedArticle[]> }).carousels,
     ).toEqual({
@@ -351,6 +354,7 @@ describe('resolveCarousels middleware', () => {
 
     await resolveCarousels(req, mockRes, mockNext)
 
+    // The carousels should not be added since the article isn't available in enterprise-cloud
     expect(
       (req.context!.page as Page & { carousels?: Record<string, ResolvedArticle[]> }).carousels,
     ).toBeUndefined()
@@ -373,6 +377,7 @@ describe('resolveCarousels middleware', () => {
 
     await resolveCarousels(req, mockRes, mockNext)
 
+    // Should only have one article, not three duplicates
     expect(
       (req.context!.page as Page & { carousels?: Record<string, ResolvedArticle[]> }).carousels,
     ).toEqual({

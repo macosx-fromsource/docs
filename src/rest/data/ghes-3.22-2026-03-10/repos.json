@@ -24213,7 +24213,7 @@
       "previews": [],
       "progAccess": {
         "userToServerRest": true,
-        "serverToServer": true,
+        "serverToServer": false,
         "fineGrainedPat": true,
         "permissions": [
           {

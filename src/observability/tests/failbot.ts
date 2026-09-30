@@ -34,11 +34,14 @@ describe('FailBot', () => {
       process.env.HAYSTACK_URL = 'https://haystack.example.com'
       const err = new Error('Kaboom')
       const backendPromises = FailBot.report(err, { foo: 'bar' })
-      // Tests await backend promises so assertions observe the POST request.
+      // Production code doesn't need to await what `FailBot.report()` returns.
+      // In vitest we await now,
+      // so we can assert the POST requests happened.
       if (backendPromises) {
         await Promise.all(await backendPromises)
       }
 
+      // What `.report()` returns doesn't matter, only that it POSTed.
       expect(requestBodiesSent.length).toBe(1)
 
       expect(requestBodiesSent[0]).toMatchObject({

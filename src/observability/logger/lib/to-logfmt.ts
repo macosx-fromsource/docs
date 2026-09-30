@@ -1,5 +1,18 @@
-// Flattens nested context for Splunk, which cannot query nested JSON objects.
-// Example: { requestContext: { path: "/en" } } becomes requestContext.path=/en.
+/*
+ Flattens a JSON object and converts it to a logfmt string
+ Nested objects are flattened with a dot separator, e.g. requestContext.path=/en
+ This is because Splunk doesn't support nested JSON objects.
+
+ Example
+ {
+   "a": 1,
+   "b": {
+     "c": 2
+    }
+ }
+ becomes
+ a=1 b.c=2
+*/
 
 // Matches the original node-logfmt library's quoting and escaping behavior.
 function stringify(data: Record<string, unknown>): string {
@@ -33,6 +46,7 @@ function stringify(data: Record<string, unknown>): string {
     line += `${key}=${stringValue} `
   }
 
+  // trim trailing space
   return line.substring(0, line.length - 1)
 }
 

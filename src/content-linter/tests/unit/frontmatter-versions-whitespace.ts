@@ -3,7 +3,7 @@ import { describe, expect, test } from 'vitest'
 import { runRule } from '@/content-linter/lib/init-test'
 import { frontmatterVersionsWhitespace } from '@/content-linter/lib/linting-rules/frontmatter-versions-whitespace'
 
-// Disable frontMatter stripping so the rule can parse frontmatter itself.
+// Configure the test fixture to not split frontmatter and content
 const fmOptions = { markdownlintOptions: { frontMatter: null } }
 
 interface ValidTestCase {
