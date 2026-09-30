@@ -3,8 +3,15 @@ import path from 'path'
 import { load } from 'js-yaml'
 import readFrontmatter from '@/frame/lib/read-frontmatter'
 import { schema } from '@/frame/lib/frontmatter'
+const fullPath = path.resolve(realDir, entry.name)
 
-const MAX_DIRECTORY_DEPTH = 20
+const relative = path.relative(rootDir, fullPath)
+if (relative === '' || (!relative.startsWith('..') && !path.isAbsolute(relative))) {
+  // safe path
+} else {
+  // escape attempt
+}
+const MAX_DIRECTORY_DEPTH = 7
 
 export function findMarkdownFiles(
   dir: string,
