@@ -75,7 +75,7 @@ export function AskAIResults({
   const [responseLoading, setResponseLoading] = useState(false)
   const [announcement, setAnnouncement] = useState<string>('')
   const disclaimerRef = useRef<HTMLDivElement>(null)
-  // Cache up to 1000 queries for 7 days.
+  // We cache up to 1000 queries, and expire them after 30 days
   const { getItem, setItem } = useAISearchLocalStorageCache<{
     query: string
     message: string
@@ -128,8 +128,9 @@ export function AskAIResults({
     )
   }
 
+  // On query change, fetch the new results
   useEffect(() => {
-    // A direct URL open has no prior Ask AI event group, so create one before reporting.
+    // If we open this window directly (like from a URL), we need to generate a new event group ID
     if (!askAIEventGroupId.current) {
       askAIEventGroupId.current = uuidv4()
     }
@@ -166,6 +167,7 @@ export function AskAIResults({
       return
     }
 
+    // Handler for streamed response from GPT
     async function fetchData() {
       let messageBuffer = ''
       let sourcesBuffer: AIReference[] = []
@@ -174,7 +176,7 @@ export function AskAIResults({
       try {
         const response = await executeAISearch(version, query, debug)
         if (!response.ok) {
-          // Classified non-OK responses include upstreamStatus from the proxy or upstream.
+          // If there is JSON and the `upstreamStatus` key, the error is from the upstream sever (CSE)
           let responseJson
           try {
             responseJson = await response.json()
@@ -182,7 +184,7 @@ export function AskAIResults({
             console.error('Failed to parse JSON:', error)
           }
           const upstreamStatus = responseJson?.upstreamStatus
-          // Missing upstreamStatus leaves this as an unclassified non-OK response.
+          // If there is no upstream status, the error is either on our end or a 500 from CSE, so we can show the error
           if (!upstreamStatus) {
             console.error(
               `Failed to fetch search results.\nStatus ${response.status}\n${response.statusText}`,
@@ -195,10 +197,10 @@ export function AskAIResults({
               status: response.status,
             })
             return setAISearchError()
-            // Treat filtered or invalid queries as cannot-answer responses.
+            // Query invalid - either sensitive question or spam
           } else if (upstreamStatus === 400 || upstreamStatus === 422) {
             return handleAICannotAnswer('', upstreamStatus, t('search.ai.responses.invalid_query'))
-            // Treat oversized queries as cannot-answer responses.
+            // Query too large
           } else if (upstreamStatus === 413) {
             return handleAICannotAnswer(
               '',
@@ -243,14 +245,14 @@ export function AskAIResults({
 
         const processLine = (parsedLine: ParsedLine) => {
           switch (parsedLine.chunkType) {
-            // The stream sends a conversation ID even when the answer is a canned response.
+            // A conversation ID will still be sent when a question cannot be answered
             case 'CONVERSATION_ID':
               conversationIdBuffer = parsedLine.conversation_id ?? ''
               setConversationId(parsedLine.conversation_id ?? '')
               break
 
             case 'NO_CONTENT_SIGNAL':
-              // NO_CONTENT_SIGNAL asks the UI to show the cannot-answer response.
+              // Serve canned response. A question that cannot be answered was asked
               handleAICannotAnswer(conversationIdBuffer, 200)
               break
 
@@ -272,7 +274,7 @@ export function AskAIResults({
               break
 
             case 'INPUT_CONTENT_FILTER':
-              // INPUT_CONTENT_FILTER asks the UI to show the invalid-query response.
+              // Serve canned response. A spam question was asked
               handleAICannotAnswer(
                 conversationIdBuffer,
                 200,
@@ -288,13 +290,16 @@ export function AskAIResults({
           const { value, done: readerDone } = await reader.read()
           done = readerDone
 
-          // Buffer newline-delimited JSON until a whole record arrives; leftover means JSON.
+          // A newline-delimited JSON record can span stream chunks, so decoded
+          // text goes into a leftover buffer and is parsed once a whole line
+          // arrives. "Incomplete" and "leftover" refer to the JSON, not to the
+          // message.
           if (value) {
             leftover += decoder.decode(value, { stream: true })
 
             const lines = leftover.split('\n')
 
-            // Keep the last item for the next chunk when it is a partial JSON record.
+            // Keep the last item, which may be incomplete, for the next round.
             leftover = lines.pop() ?? ''
 
             for (const raw of lines) {

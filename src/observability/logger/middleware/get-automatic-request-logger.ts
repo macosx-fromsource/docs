@@ -44,7 +44,7 @@ export function getAutomaticRequestLogger() {
       } else if (shouldEnableAutomaticDevLogging()) {
         const logLevelNum = getLogLevelNumber()
 
-        // Suppress /_next/ requests unless LOG_LEVEL is debug or more verbose.
+        // Don't log `/_next/` requests unless LOG_LEVEL is `debug` or higher
         if (url?.startsWith('/_next/') && logLevelNum < 3) {
           return originalEnd.apply(this, args as Parameters<typeof originalEnd>)
         }

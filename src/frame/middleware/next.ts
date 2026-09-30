@@ -12,7 +12,8 @@ export const nextHandleRequest = nextApp.getRequestHandler()
 await nextApp.prepare()
 
 function renderPageWithNext(req: ExtendedRequest, res: Response, nextFn: NextFunction) {
-  // _next asset and HMR requests, like /_next/webpack-hmr, bypass docs routing.
+  // This catches URLs like `/_next/webpack-hmr` and
+  // `/_next/static/webpack/64e44ef62e261d3a.webpack.hot-update.json`.
   if (req.path.startsWith('/_next') && !req.path.startsWith('/_next/data')) {
     return nextHandleRequest(req, res)
   }

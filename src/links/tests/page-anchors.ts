@@ -7,7 +7,6 @@ import {
   versionFromResolvedKey,
 } from '@/links/lib/page-anchors'
 import type { Page } from '@/types'
-import { latest } from '@/versions/lib/enterprise-server-releases'
 
 describe('versionFromResolvedKey', () => {
   test('returns null for an unversioned (free-pro-team) key', () => {
@@ -21,8 +20,8 @@ describe('versionFromResolvedKey', () => {
   })
 
   test('reads an explicit enterprise-server release prefix', () => {
-    expect(versionFromResolvedKey(`/en/enterprise-server@${latest}/actions/foo`)).toBe(
-      `enterprise-server@${latest}`,
+    expect(versionFromResolvedKey('/en/enterprise-server@3.17/actions/foo')).toBe(
+      'enterprise-server@3.17',
     )
   })
 

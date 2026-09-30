@@ -1,4 +1,8 @@
-// Verifies that OpenAPI files can be decorated successfully.
+// [start-readme]
+//
+// Run this script to check if OpenAPI files can be decorated successfully.
+//
+// [end-readme]
 
 import fs from 'fs'
 import path from 'path'

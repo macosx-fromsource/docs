@@ -16,7 +16,10 @@ export const DeprecationBanner = () => {
     return null
   }
 
-  // MainContext supplies enterprise_deprecation before React renders this banner.
+  // Have to "trick" TypeScript here because by default, this is an
+  // optional key. But because we're confident with the JS business
+  // logic in MainContext.tsx, we can safely assume that this key
+  // is present.
   const enterpriseDeprecation = data.reusables.enterprise_deprecation as EnterpriseDeprecation
   const message = enterpriseServerReleases.isOldestReleaseDeprecated
     ? enterpriseDeprecation.version_was_deprecated

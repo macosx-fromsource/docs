@@ -12,7 +12,11 @@ interface BespokeLandingPage extends Omit<Page, 'featuredLinks'> {
   includedCategories?: string[]
 }
 
-// Bespoke landing pages ignore includedCategories; only discovery landing pages apply it.
+/**
+ * Transforms bespoke-landing pages into markdown.
+ * Unlike discovery-landing, this shows every article regardless of
+ * includedCategories, which only filters discovery-landing pages.
+ */
 export class BespokeLandingTransformer implements PageTransformer {
   templateName = 'landing-page.template.md'
 
@@ -42,6 +46,7 @@ export class BespokeLandingTransformer implements PageTransformer {
     const bespokePage = page as BespokeLandingPage
     const sections: Section[] = []
 
+    // Process carousels (each carousel becomes a section)
     const carousels = bespokePage.carousels ?? bespokePage.rawCarousels
     if (carousels && typeof carousels === 'object') {
       const { default: getPageLinkData } = await import('@/frame/lib/get-link-data')
@@ -51,12 +56,14 @@ export class BespokeLandingTransformer implements PageTransformer {
 
         let links: LinkData[]
         if (typeof articles[0] === 'object' && 'title' in articles[0]) {
+          // Already resolved articles
           links = articles.map((item) => ({
             href: typeof item === 'string' ? item : item.href,
             title: (typeof item === 'object' && item.title) || '',
             intro: (typeof item === 'object' && item.intro) || '',
           }))
         } else {
+          // Raw paths that need resolution
           const linkData = await getPageLinkData(articles as string[], context, {
             title: true,
             intro: true,
@@ -81,7 +88,8 @@ export class BespokeLandingTransformer implements PageTransformer {
       }
     }
 
-    // getAllTocItems matches the site's genericTocFlat and genericTocNested behavior.
+    // Recursively gather every descendant article, matching the site's
+    // genericTocFlat/genericTocNested behaviour.
     if (bespokePage.children && bespokePage.children.length > 0) {
       const tocItems = await getAllTocItems(page, context)
 

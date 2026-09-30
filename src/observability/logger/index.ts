@@ -45,7 +45,7 @@ function formatContext(ctx: Record<string, unknown>): string {
   return parts.length > 0 ? `  ${parts.join(' ')}` : ''
 }
 
-// Accepts file URLs from import.meta.url and plain string labels.
+// Handles file:// URLs (from import.meta.url) and plain string labels.
 function resolveFilePath(filePath: string): string {
   try {
     const parsed = new URL(filePath)
@@ -76,8 +76,13 @@ interface LoggerMethod {
   (message: string, ...args: (string | number | boolean | Error | IncludeContext | object)[]): void
 }
 
-// Pass import.meta.url so logs identify the caller file.
-// Development logs go to console; production logs use logfmt on stdout.
+/*
+Call this function with `import.meta.url` as the argument to create a logger for a specific file.
+
+e.g. `const logger = createLogger(import.meta.url)`
+
+Logs will be output to the console in development, and in `logfmt` format to stdout in production.
+*/
 export function createLogger(filePath: string) {
   if (!filePath) {
     throw new Error('createLogger must be called with the import.meta.url argument')
@@ -146,7 +151,7 @@ export function createLogger(filePath: string) {
     }
     const currentLogLevel = getLogLevelNumber()
     if (LOG_LEVELS[level] > currentLogLevel) {
-      return // Higher numbers are more verbose.
+      return // Do not log if the requested level is lower priority
     }
 
     const loggerContext = getLoggerContext()
@@ -166,7 +171,7 @@ export function createLogger(filePath: string) {
       const includedContextWithFormattedError = {} as IncludeContext
       for (const [key, value] of Object.entries(includeContext)) {
         if (typeof value === 'object' && value instanceof Error) {
-          // Errors need explicit fields because JSON serialization drops message and stack.
+          // Errors don't serialize well to JSON, so just log the message + stack trace
           includedContextWithFormattedError[key] = value.message
           includedContextWithFormattedError[`${key}_code`] = (value as NodeJS.ErrnoException).code
           includedContextWithFormattedError[`${key}_name`] = value.name

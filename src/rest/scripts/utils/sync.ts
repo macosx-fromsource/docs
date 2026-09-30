@@ -12,6 +12,9 @@ import type Operation from './operation'
 
 type OperationsByCategory = Record<string, Record<string, Operation[]>>
 
+// All of the schema releases that we store in allVersions
+//  Ex: 'api.github.com', 'ghec', 'ghes-3.6', 'ghes-3.5',
+// 'ghes-3.4', 'ghes-3.3', 'ghes-3.2', 'github.ae'
 const OPENAPI_VERSION_NAMES = Object.keys(allVersions).map(
   (elem) => allVersions[elem].openApiVersionName,
 )
@@ -26,7 +29,8 @@ export async function syncRestData(
   ) => OpenApiSchema | Promise<OpenApiSchema>,
 ): Promise<void> {
   const writeTasks: Promise<void>[] = []
-  // Track written category files so stale upstream removals delete matching data files after sync.
+  // Track which category files were written per version directory so we
+  // can remove stale files that no longer appear in the upstream schema.
   const writtenFilesByVersion = new Map<string, Set<string>>()
 
   await Promise.all(
@@ -36,7 +40,7 @@ export async function syncRestData(
 
       if (injectIntoSchema) {
         const injectedSchema = await injectIntoSchema(schema, schemaName)
-        schema = injectedSchema || schema
+        schema = injectedSchema || schema // Fallback to original if injection returns null
       }
 
       const operations: Operation[] = []
@@ -125,7 +129,8 @@ async function formatRestData(operations: Operation[]): Promise<OperationsByCate
     const subcategories = [
       ...new Set(categoryOperations.map((operation) => operation.subcategory)),
     ].sort()
-    // Put the category-level subcategory first so it renders before nested subcategories.
+    // the first item should be the item that has no subcategory
+    // e.g., when the subcategory = category
     const firstItemIndex = subcategories.indexOf(category)
     if (firstItemIndex > -1) {
       const firstItem = subcategories.splice(firstItemIndex, 1)[0]
@@ -145,11 +150,12 @@ async function formatRestData(operations: Operation[]): Promise<OperationsByCate
   return operationsByCategory
 }
 
-// updateRestConfigData keeps config.json date arrays in step with synced
-// calendar-date schemas. Deprecated dates drop out because each touched version
-// key is rebuilt from this sync run.
-// Partial --versions runs leave untouched keys alone, and GitHub Enterprise
-// Server deprecation removes entire version keys such as ghes-<release>.
+// Keeps config.json in step with the API versions in the REST data files.
+// Rebuilds each version's date array from the calendar-date schemas actually
+// synced, so deprecated dates drop out on their own. Only version keys with at
+// least one such schema are touched, so a partial --versions run leaves the
+// rest alone. An entire version key such as "ghes-3.14" is never
+// removed here; the GHES deprecation process handles that.
 async function updateRestConfigData(schemas: string[]): Promise<void> {
   const restConfigFilename = 'src/rest/lib/config.json'
   const restConfigData = JSON.parse(await readFile(restConfigFilename, 'utf8')) as Record<
@@ -158,7 +164,9 @@ async function updateRestConfigData(schemas: string[]): Promise<void> {
   >
   const restApiVersionData = (restConfigData['api-versions'] as Record<string, string[]>) || {}
 
-  // Calendar-date schemas start with an OPENAPI_VERSION_NAMES entry without exactly matching it.
+  // Phase 1: collect the dates in the incoming schemas, keyed by OpenAPI
+  // version name. Only calendar-date schemas count, meaning the ones that start
+  // with an OPENAPI_VERSION_NAMES entry without exactly matching it.
   const incomingDates: Record<string, Set<string>> = {}
 
   for (const schema of schemas) {
@@ -174,7 +182,9 @@ async function updateRestConfigData(schemas: string[]): Promise<void> {
     }
   }
 
-  // Replacing each touched date array removes deprecated dates missing from upstream schemas.
+  // Phase 2: For each version key that appeared in this sync run, replace its
+  // date array with exactly what was synced. This removes any deprecated dates
+  // that are no longer present in the upstream schemas.
   for (const [openApiVer, dates] of Object.entries(incomingDates)) {
     restApiVersionData[openApiVer] = [...dates].sort()
   }
@@ -188,22 +198,35 @@ export async function getOpenApiSchemaFiles(
 ): Promise<{ restSchemas: string[]; webhookSchemas: string[] }> {
   const restSchemas: string[] = []
   const webhookSchemas: string[] = []
+  // The full list of dereferened OpenAPI schemas received from
+  // bundling the OpenAPI in github/github
   const schemaNames = schemas.map((schema) => path.basename(schema, '.json'))
 
   const versionNames = Object.keys(allVersions).map((elem) => allVersions[elem].openApiVersionName)
 
   for (const schema of schemaNames) {
     const schemaBasename = `${schema}.json`
-    // Non-calendar schemas must exactly match an allVersions OpenAPI version name.
+    // If the version doesn't have calendar date versioning
+    // it should have an exact match with one of the versions defined
+    // in the allVersions object.
     if (versionNames.includes(schema)) {
       webhookSchemas.push(schemaBasename)
     }
 
-    // Supported schemas start with an allVersions OpenAPI version name.
+    // If the schema version has calendar date versioning, then one of
+    // the versions defined in allVersions should be a substring of the
+    // schema version. This means the schema version is a supported version
     if (versionNames.some((elem) => schema.startsWith(elem))) {
-      // Base names match themselves and dated schemas, such as api.github.com.YYYY-MM-DD.
+      // If the schema being evaluated is a calendar-date version, then
+      // there would only be one exact match in the list of schema names.
+      // If the schema being evaluated is a non-calendar-date version, then
+      // there will be two matches.
+      // Ex: api.github.com would match api.github.com and
+      // api.github.com.2022-09-09
       const filteredMatches = schemaNames.filter((elem) => elem.includes(schema))
-      // One match means a dated schema or a version without dates; REST data favors dated schemas.
+      // If there is only one match then it's either a calendar-date version
+      // or the version doesn't support calendar dates yet. We favor calendar-date
+      // versions but default to non calendar-date versions.
       if (filteredMatches.length === 1) {
         restSchemas.push(schemaBasename)
       }

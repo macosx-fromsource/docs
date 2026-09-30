@@ -84,6 +84,7 @@ describe('removeStaleRestDataFiles', () => {
     const writtenFiles = new Map<string, Set<string>>()
     writtenFiles.set(nonexistent, new Set(['actions.json']))
 
+    // Should not throw
     await removeStaleRestDataFiles(writtenFiles)
   })
 })

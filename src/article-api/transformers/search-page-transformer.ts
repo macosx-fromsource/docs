@@ -1,7 +1,10 @@
 import type { Context, Page } from '@/types'
 import type { PageTransformer } from './types'
 
-// /en/search has no markdown content, so return the title and a pointer to the Search API.
+/**
+ * /en/search is a UI-only page with no markdown content, so this returns the
+ * title plus a pointer to the Search API.
+ */
 export class SearchPageTransformer implements PageTransformer {
   templateName = ''
 

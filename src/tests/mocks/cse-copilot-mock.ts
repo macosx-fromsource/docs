@@ -1,6 +1,6 @@
 import { Request, Response } from 'express'
 
-// Tests use this prefix only to mount the mock route; any stable value works.
+// Prefix used for mocking. This can be any value
 export const CSE_COPILOT_PREFIX = 'cse-copilot'
 
 export function cseCopilotPostAnswersMock(req: Request, res: Response) {

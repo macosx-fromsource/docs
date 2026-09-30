@@ -1,5 +1,6 @@
 type Schema = Record<string, unknown>
 
+// Keywords whose value is a map of name to schema.
 const SCHEMA_MAP_KEYWORDS = new Set([
   'properties',
   'patternProperties',
@@ -8,6 +9,7 @@ const SCHEMA_MAP_KEYWORDS = new Set([
   'dependentSchemas',
 ])
 
+// Keywords whose value is a single schema.
 const SINGLE_SCHEMA_KEYWORDS = new Set([
   'additionalProperties',
   'additionalItems',
@@ -21,9 +23,12 @@ const SINGLE_SCHEMA_KEYWORDS = new Set([
   'else',
 ])
 
+// Keywords whose value is an array of schemas.
 const SCHEMA_ARRAY_KEYWORDS = new Set(['anyOf', 'oneOf', 'prefixItems'])
 
-// Annotation keywords do not constrain instances, so the first allOf definition wins.
+// Keywords that only describe a schema. When two `allOf` members disagree on
+// one of these, the first definition wins instead of being treated as a
+// conflict, because the choice cannot make the rendered docs wrong.
 const ANNOTATION_KEYWORDS = new Set([
   'title',
   'description',
@@ -40,8 +45,8 @@ function isSchemaObject(value: unknown): value is Schema {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
-// Define schema keys explicitly because plain assignment treats __proto__ as the
-// prototype instead of a property.
+// Plain assignment would treat a key like `__proto__` as the prototype rather
+// than a property, so keys that come from the schema are defined explicitly.
 function setOwn(target: Schema, key: string, value: unknown): void {
   Object.defineProperty(target, key, {
     value,
@@ -67,13 +72,18 @@ function isDeepEqual(a: unknown, b: unknown): boolean {
   return false
 }
 
-// mergeInto treats source and target as an intersection of constraints. Existing
-// target keywords win, so the schema that owns allOf takes precedence over its
-// members and earlier members beat later ones.
-// Only the GitHub OpenAPI cases are merged: identical values, properties,
-// required, type, and annotations.
-// Unexpected conflicts throw so future descriptions do not publish wrong request
-// body parameters.
+/**
+ * Combines `source` into `target`, treating the two as an intersection of
+ * constraints. Keywords already on `target` win, so the schema that owns the
+ * `allOf` takes precedence over its members and earlier members take
+ * precedence over later ones.
+ *
+ * Only the cases the GitHub OpenAPI descriptions actually use are merged:
+ * identical values, `properties`, `required`, `type`, and annotations.
+ * Anything else throws rather than guessing, so a future description that
+ * needs real conflict resolution fails the build loudly instead of quietly
+ * publishing the wrong request body parameters.
+ */
 function mergeInto(target: Schema, source: Schema, path: string): void {
   for (const [key, value] of Object.entries(source)) {
     if (!Object.hasOwn(target, key)) {
@@ -107,7 +117,11 @@ function mergeInto(target: Schema, source: Schema, path: string): void {
       continue
     }
 
-    // allOf intersects its members, so keep only the type names both sides allow.
+    // `type` may be a single type name or an array of allowed type names, and
+    // different `allOf` members can spell the same constraint differently
+    // (e.g. `"object"` vs `["object", "null"]`, or the same array in a
+    // different order). Per JSON Schema, `allOf` members combine as an
+    // intersection, so the merged type is whichever names both sides allow.
     if (key === 'type') {
       const existingTypes = Array.isArray(existing) ? existing : [existing]
       const valueTypes = Array.isArray(value) ? value : [value]
@@ -141,7 +155,7 @@ function resolveKeyword(key: string, value: unknown, path: string): unknown {
     return value.map((item, index) => resolveSchema(item, `${path}/${index}`))
   }
 
-  // JSON Schema items is a single schema in current drafts and an array in draft-04.
+  // `items` is a single schema in current drafts and an array in draft-04.
   if (key === 'items') {
     if (Array.isArray(value)) {
       return value.map((item, index) => resolveSchema(item, `${path}/${index}`))
@@ -151,7 +165,9 @@ function resolveKeyword(key: string, value: unknown, path: string): unknown {
 
   if (SINGLE_SCHEMA_KEYWORDS.has(key)) return resolveSchema(value, path)
 
-  // Instance data such as enum, const, and default passes through; a property named allOf survives.
+  // Anything else holds instance data rather than a schema, such as `enum`,
+  // `const`, or `default`. It is copied through untouched so that a value or a
+  // property that happens to be named `allOf` survives.
   return value
 }
 
@@ -181,10 +197,13 @@ function resolveSchema(schema: unknown, path: string): unknown {
   return resolved
 }
 
-// mergeAllOf flattens JSON Schema allOf so consumers only walk properties.
-// It replaces the unmaintained json-schema-merge-allof package.
-// The returned schema is a deep copy so callers can mutate it without changing
-// the source operation.
+/**
+ * Flattens every `allOf` in a JSON schema so that consumers only have to walk
+ * `properties`. Replaces the unmaintained `json-schema-merge-allof` package.
+ *
+ * The returned schema is a deep copy, so callers are free to mutate it without
+ * touching the OpenAPI operation it came from.
+ */
 export function mergeAllOf(schema: unknown): unknown {
   return resolveSchema(structuredClone(schema), '#')
 }

@@ -1,7 +1,10 @@
 import type { Context, Page } from '@/types'
 import type { PageTransformer } from './types'
 
-// Register this catch-all after specific transformers.
+/**
+ * Catch-all transformer, registered last. Renders the page body as markdown
+ * and prepends the title and intro.
+ */
 export class ArticleTransformer implements PageTransformer {
   canTransform(page: Page): boolean {
     return page != null

@@ -16,7 +16,8 @@ export interface ResolvedArticle {
   category: string[]
 }
 
-// ExtendedRequest collects properties middleware attaches to Request, including req.context.
+// Middleware attaches things to the Request, like `req.context`.
+// This type collects everything we add.
 export type ExtendedRequest = Request & {
   pagePath?: string
   context?: Context
@@ -26,9 +27,9 @@ export type ExtendedRequest = Request & {
   FailBot?: Failbot
 }
 
-// Hand-maintained to match schema in frame/lib/frontmatter.ts.
-// Generating it from the AJV schema would need extra build tooling because
-// the schema is built dynamically with version-specific properties.
+// Hand-maintained to match `schema` in frame/lib/frontmatter.ts.
+// Generating it from the AJV schema would need extra build tooling,
+// and the schema is built dynamically with version-specific properties.
 export type PageFrontmatter = {
   title: string
   versions: FrontmatterVersions
@@ -111,7 +112,7 @@ type Redirects = {
 }
 
 export type Context = {
-  // Context allows dynamic keys for features and version short names.
+  // Allows dynamic properties like features & version shortnames as keys
   [key: string]: unknown
   currentCategory?: string
   currentJourneyTrack?: JourneyContext | null
@@ -427,8 +428,8 @@ export type AllVersions = {
   [name: string]: Version
 }
 
-// Cast req.query to this type when building URLSearchParams.
-// TypeScript rejects values that are safe at runtime.
+// Cast `req.query` to this when building URLSearchParams.
+// Without it TypeScript reports an error that can't actually happen at runtime.
 export type URLSearchParamsTypes = string | string[][] | Record<string, string> | URLSearchParams
 
 export type FeatureData = {
@@ -438,7 +439,7 @@ export type Versions = {
   versions: FrontmatterVersions
 }
 
-// Fields parsed from .md frontmatter; the full schema allows more fields.
+// For parsing .md frontmatter. Not the full set the schema allows.
 export type MarkdownFrontmatter = {
   title: string
   shortTitle?: string

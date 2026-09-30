@@ -63,7 +63,7 @@ export function findPotentialUses({
     reusableCount += 1
 
     for (const { filePath, fileContents } of allFileContents) {
-      // Do not report a reusable as a use of itself.
+      // Skip the reusable file itself
       if (filePath === reusableFilePath) continue
 
       const indices = findIndicesOfSubstringInString(reusableContents.trim(), fileContents)

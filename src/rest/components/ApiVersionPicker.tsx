@@ -13,11 +13,13 @@ const API_VERSION_SUFFIX = ' (latest)'
 
 function rememberApiVersion(apiVersion: string) {
   try {
-    // Remember the selected REST API version across REST docs pages.
+    // We use this cookie to remember which API Version a user chooses
+    // when they navigate the REST docs.
     const apiVersionNormalized = apiVersion.replace(API_VERSION_SUFFIX, '')
     Cookies.set(API_VERSION_COOKIE_NAME, apiVersionNormalized)
   } catch (err) {
-    // Some extensions make document.cookie throw, so ignore cookie-write failures.
+    // Some browser extensions disallow setting cookies at all, so the
+    // `document.cookie` setter can throw. Swallow it and move on.
     console.warn('Unable to set preferred api version cookie', err)
   }
 }
@@ -28,7 +30,8 @@ export const ApiVersionPicker = () => {
   const { allVersions } = useMainContext()
   const { t } = useTranslation('rest')
   const basePath = router.asPath.split('#')[0].split('?')[0]
-  // Use a valid URL version or latest; RestRedirect applies the cookie preference to the URL.
+  // Use the version from the URL when it's valid, otherwise the latest date.
+  // RestRedirect is what applies the cookie preference to the URL.
   const isValidApiVersion =
     (router.query.apiVersion &&
       typeof router.query.apiVersion === 'string' &&
@@ -72,7 +75,7 @@ export const ApiVersionPicker = () => {
     },
   })
 
-  // Calendar-date versioned docs expose at least one API version.
+  // A non-empty `apiVersions` means the version is calendar-date versioned.
   return allVersions[currentVersion].apiVersions.length > 0 ? (
     <div data-testid="api-version-picker">
       <Picker

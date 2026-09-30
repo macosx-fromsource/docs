@@ -100,7 +100,8 @@ describe('buildCommentBody', () => {
 })
 
 describe('duplicate-prevention filtering', () => {
-  // These tests cover duplicate filtering without running the CLI action.
+  // This tests the core filtering logic used in the CLI action:
+  //   const toNotify = sourceNotes.filter((n) => !alreadyCommented.has(n.issueNumber))
 
   const sourceNotes: SourceNote[] = [
     { issueUrl: 'https://github.com/github/releases/issues/100', issueNumber: 100 },
@@ -132,6 +133,7 @@ describe('duplicate-prevention filtering', () => {
     const marker = buildMarker('3.21', 'rc')
     const commentBody = buildCommentBody('3.21', true, 100, ['octocat'])
 
+    // Simulates the duplicate-check logic: comments.includes(marker)
     expect(commentBody.includes(marker)).toBe(true)
   })
 
@@ -143,6 +145,7 @@ describe('duplicate-prevention filtering', () => {
   })
 
   test('new issues added after initial run are not excluded', () => {
+    // Simulates: ran script once for issues 100+200, then re-run after adding 300
     const alreadyCommented = new Set([100, 200])
     const updatedSourceNotes: SourceNote[] = [
       ...sourceNotes,

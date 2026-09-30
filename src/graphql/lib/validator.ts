@@ -1,4 +1,5 @@
-// src/graphql/tests/validate-schema.ts reads these schemas to validate generated data.
+// the tests in tests/graphql.ts use this schema to ensure the integrity
+// of the data in src/graphql/data/*.json
 
 interface JSONSchema {
   type?: string
@@ -78,6 +79,7 @@ export const upcomingChangesValidator: ValidatorSchema = {
   },
 }
 
+// many GraphQL schema members have these core properties
 const coreProps: JSONSchema = {
   properties: {
     name: {
@@ -105,6 +107,7 @@ const coreProps: JSONSchema = {
   },
 }
 
+// some GraphQL schema members have the core properties plus an 'args' object
 const corePropsPlusArgs = dup(coreProps)
 
 corePropsPlusArgs.properties!.args = {
@@ -115,6 +118,7 @@ corePropsPlusArgs.properties!.args = {
   },
 }
 
+// the args object can have defaultValue prop
 corePropsPlusArgs.properties!.args.items!.properties!.defaultValue = {
   type: 'boolean',
 }

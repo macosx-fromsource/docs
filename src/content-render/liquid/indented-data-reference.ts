@@ -14,9 +14,15 @@ interface LiquidScope {
   }
 }
 
-// indented_data_reference renders a data reference with spaces=NUMBER prepended to every line.
+// This class supports a tag that expects two parameters, a data reference and `spaces=NUMBER`:
+//
+// {% indented_data_reference foo.bar spaces=NUMBER %}
 // Example: {% indented_data_reference reusables.pages.wildcard-dns-warning spaces=3 %}
-// Use it inside Markdown blocks, such as nested lists, without changing site.data rendering.
+//
+// This tag renders the given data reference with the specified number of spaces
+// prepended to each line. This results in correct formatting when the data
+// reference is used inside a block element (like a list or nested list) without
+// affecting the formatting when the reference is used elsewhere via {{ site.data.foo.bar }}.
 
 const IndentedDataReference = {
   markup: '',
@@ -27,7 +33,8 @@ const IndentedDataReference = {
   },
 
   async render(scope: LiquidScope): Promise<string | undefined> {
-    // Preserve the separator space so spaces=NUMBER and spaces = NUMBER parse the same way.
+    // obfuscate first legit space, remove all other spaces, then restore legit space
+    // this way we can support spaces=NUMBER as well as spaces = NUMBER
     const input = this.markup
       .replace(/\s/, 'REALSPACE')
       .replace(/\s/g, '')
@@ -35,7 +42,7 @@ const IndentedDataReference = {
 
     const [dataReference, spaces] = input.split(' ')
 
-    // The tag defaults to spaces=2.
+    // if no spaces are specified, default to 2
     const numSpaces: string = spaces ? spaces.replace(/spaces=/, '') : '2'
 
     assert(parseInt(numSpaces) || numSpaces === '0', '"spaces=NUMBER" must include a number')

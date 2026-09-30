@@ -17,11 +17,12 @@ export const CategoryLanding = () => {
   const router = useRouter()
   const { title, intro, tocItems, spotlight, filters } = useCategoryLandingContext()
 
-  // Always show the category filter; filters frontmatter controls surface and complexity.
+  // The category filter is always shown. Surface and complexity are opt-in via
+  // the `filters` frontmatter array on the landing page.
   const showSurface = filters ? filters.includes('surface') : true
   const showComplexity = filters ? filters.includes('complexity') : false
 
-  // Category landing cards use only child articles, not directory nodes.
+  // tocItems contains directories and its children, we only want the child articles
   const onlyFlatItems: ArticleCardItems = tocItems.flatMap((item) => item.childTocItems || [])
 
   const [searchQuery, setSearchQuery] = useState('')
@@ -111,7 +112,8 @@ export const CategoryLanding = () => {
     <DefaultLayout>
       <UtmPreserver />
       {router.route === '/[versionId]/rest/[category]' && <RestRedirect />}
-      {/* ClientSideRedirects renders null, so placement does not affect layout. */}
+      {/* Position does not matter, because it will
+      never render anything. It always just return null. */}
       <ClientSideRedirects />
 
       <div className="container-xl px-3 px-md-6 my-4" data-search="article-body">

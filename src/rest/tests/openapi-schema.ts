@@ -86,9 +86,10 @@ describe('markdown for each rest version', () => {
   })
 
   test('markdown file exists for every operationId prefix in all versions of the OpenAPI schema', async () => {
+    // List of categories derived from disk
     const filenames = new Set(
       getAutomatedMarkdownFiles('content/rest')
-        // Extract the category segment from category and subcategory paths.
+        // Gets just category level files (paths directly under /rest)
         .map((filename) => filename.split('/')[2])
         .sort(),
     )
@@ -141,8 +142,10 @@ describe('rest file structure', () => {
 })
 
 describe('OpenAPI schema validation', () => {
-  // Every allVersions entry needs a matching decorated data directory.
-  // Extra directories, such as GHEC static data, can exist before allVersions exposes them.
+  // ensure every version defined in allVersions has a correlating static
+  // decorated file, while allowing decorated files to exist when a version
+  // is not yet defined in allVersions (e.g., a GHEC static file can exist
+  // even though the version is not yet supported in the docs)
   test('every OpenAPI version must have a schema file in the docs', async () => {
     const versionDirs = fs
       .readdirSync(schemasPath, { withFileTypes: true })

@@ -7,6 +7,7 @@ const makeURL = (pathname: string): string =>
 
 describe('toc transformer', () => {
   test('renders a category page (3-segment URL) with children', async () => {
+    // /en/actions/category is a category page (documentType: category) with children but no layout
     const res = await get(makeURL('/en/actions/category'))
     expect(res.statusCode).toBe(200)
     expect(res.headers['content-type']).toContain('text/markdown')
@@ -20,6 +21,7 @@ describe('toc transformer', () => {
   })
 
   test('renders a subcategory page (4+-segment URL) with children', async () => {
+    // /en/actions/category/subcategory is a subcategory page (documentType: subcategory) with children but no layout
     const res = await get(makeURL('/en/actions/category/subcategory'))
     expect(res.statusCode).toBe(200)
     expect(res.headers['content-type']).toContain('text/markdown')
@@ -33,6 +35,7 @@ describe('toc transformer', () => {
     const res = await get(makeURL('/en/actions/category'))
     expect(res.statusCode).toBe(200)
 
+    // Each child link should have its intro text below
     expect(res.body).toContain("Here's the intro for")
   })
 

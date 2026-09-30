@@ -208,7 +208,7 @@ describe('toLogfmt', () => {
 
       const result = toLogfmt(obj)
       expect(result).toContain('name=test')
-      expect(result).toContain('self=[Circular]')
+      expect(result).toContain('self=[Circular]') // Our implementation marks circular refs
     })
 
     it('should handle Date objects', () => {

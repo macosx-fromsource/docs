@@ -70,8 +70,10 @@ const indexOrder: IndexOrder = {
 }
 
 describe('automated content directory updates', () => {
-  // Tests mutate a temp copy of src/automated-pipelines/tests/fixtures/content, then compare
-  // the resulting file tree and frontmatter after updateContentDirectory runs.
+  // Before all tests, copy the content directory fixture
+  // to the operating systems temp directory. We'll be modifying
+  // that temp directory during the tests and comparing the directory
+  // structure and contents after running updateContentDirectory.
   beforeAll(async () => {
     process.env.TEST_OS_ROOT_DIR = tempDirectory
     mkdirSync(`${tempContentDirectory}`, { recursive: true })
@@ -79,7 +81,10 @@ describe('automated content directory updates', () => {
       recursive: true,
     })
 
-    // Temp fixtures need absolute paths because this test runs outside the repo content root.
+    // The updateContentDirectory uses relative paths to the content directory
+    // because outside of testing it only runs in the docs-internal repo.
+    // Because of that, we need to update the content paths to use the
+    // full file path.
     const contentDataFullPath: { [key: string]: ContentItem } = {}
     for (const key of Object.keys(newContentData)) {
       contentDataFullPath[path.join(targetDirectory, key)] = newContentData[key]
@@ -122,6 +127,7 @@ describe('automated content directory updates', () => {
   })
 
   test('rest/actions index file is updated as expected', async () => {
+    // workflows added and artifacts removed
     const actionsIndex = matter(
       await readFile(`${tempDirectory}/content/rest/actions/index.md`, 'utf8'),
     )

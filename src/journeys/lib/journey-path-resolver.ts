@@ -59,8 +59,9 @@ type JourneyPage = {
   }>
 }
 
-// Static guide paths cache on first use.
-// Rendered hrefs stay out of cachedGuidePaths and set hasDynamicGuides.
+// All computed once, on first use.
+// Guide hrefs containing Liquid can't be resolved ahead of time,
+// so they're absent from cachedGuidePaths and set hasDynamicGuides instead.
 let cachedJourneyPages: JourneyPage[] | null = null
 let cachedGuidePaths: Set<string> | null = null
 let hasDynamicGuides = false
@@ -133,7 +134,9 @@ async function fetchGuideData(
   return null
 }
 
-// Returns null when no journey track applies to the article and current version.
+/**
+ * Returns null if the article isn't a guide in any journey track.
+ */
 export async function resolveJourneyContext(
   articlePath: string,
   pages: Record<string, Page>,
@@ -156,7 +159,8 @@ export async function resolveJourneyContext(
   for (const journeyPage of journeyPages) {
     if (!journeyPage.journeyTracks) continue
 
-    // Track articles inherit landing page versions, so unmatched versions show no navigation.
+    // Track articles inherit the landing page's versions,
+    // so a journey that doesn't apply to the current version has no navigation to show.
     if (journeyPage.versions) {
       const journeyVersions = getApplicableVersions(journeyPage.versions)
       if (!journeyVersions.includes(context.currentVersion || '')) {
@@ -183,7 +187,8 @@ export async function resolveJourneyContext(
               () => guidePath,
             )
           } catch {
-            // executeWithFallback rethrows non-fallbackable errors and all English content errors.
+            // executeWithFallback rethrows errors it can't fall back from,
+            // such as any error in English.
             renderedGuidePath = guidePath
           }
         }
@@ -200,7 +205,7 @@ export async function resolveJourneyContext(
         const alternativeNextStep = track.guides[guideIndex].alternativeNextStep || ''
         let renderedAlternativeNextStep = alternativeNextStep
 
-        // Render this with links intact, unlike the hrefs above that use textOnly.
+        // Rendered with links intact, unlike the hrefs above which use textOnly.
         if (needsRendering(alternativeNextStep)) {
           try {
             renderedAlternativeNextStep = await executeWithFallback(
@@ -213,7 +218,8 @@ export async function resolveJourneyContext(
           }
         }
 
-        // Drop guides that fail lookup so counts and prev/next links use resolvable guides.
+        // fetchGuideData returns null for guides missing in the current version.
+        // Dropping them keeps the counts and prev/next links correct.
         const availableGuides = (
           await Promise.all(
             track.guides.map(async (guide, i) => {
@@ -279,7 +285,9 @@ export async function resolveJourneyContext(
   return result
 }
 
-// Journey track frontmatter may contain Liquid, so render it before components use it.
+/**
+ * Reads journey tracks from frontmatter, rendering any Liquid they contain.
+ */
 export async function resolveJourneyTracks(
   journeyTracks: JourneyPage['journeyTracks'],
   context: Context,

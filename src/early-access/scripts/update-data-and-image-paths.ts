@@ -1,5 +1,7 @@
-// @purpose Writer tool
-// @description Add or remove "early-access" from data and image paths
+/**
+ * @purpose Writer tool
+ * @description Add or remove "early-access" from data and image paths
+ */
 
 import fs from 'fs'
 import path from 'path'
@@ -43,7 +45,7 @@ let selectedFiles: string[] = allEarlyAccessFiles
 if (earlyAccessPath) {
   const contentFiles = allEarlyAccessFiles.filter((file) => file.includes(earlyAccessPath))
 
-  // Include reusable files referenced by selected content files.
+  // We also need to include any reusable files that are referenced in the selected content files.
   const referencedDataFiles: string[] = []
   for (const file of contentFiles) {
     const contents = fs.readFileSync(file, 'utf8')

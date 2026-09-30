@@ -7,7 +7,8 @@ import nock from 'nock'
 
 import getRemoteJSON, { cache } from '@/frame/lib/get-remote-json'
 
-// Covers in-memory caching and disk-cache fallback after a memory miss.
+// Covers the in-memory cache, and the fallback to the disk cache when memory
+// misses.
 
 describe('getRemoteJSON', () => {
   const envVarValueBefore = process.env.GET_REMOTE_JSON_DISK_CACHE_ROOT
@@ -33,7 +34,8 @@ describe('getRemoteJSON', () => {
     const data = await getRemoteJSON(url, {})
     expect((data as Record<string, unknown>).foo).toBe('bar')
     expect(cache.get(url)).toBeTruthy()
-    // A second network request would fail unless getRemoteJSON uses the memory cache.
+    // Second time, despite not setting up a second nock(), will work
+    // because it can use memory now.
     const data2 = await getRemoteJSON(url, {})
     expect((data2 as Record<string, unknown>).foo).toBe('bar')
     expect(cache.get(url)).toBeTruthy()
@@ -48,7 +50,9 @@ describe('getRemoteJSON', () => {
     expect(cache.get(url)).toBeTruthy()
     cache.delete(url)
 
-    // A second network request would fail unless getRemoteJSON uses the disk cache.
+    // This time, the nock won't fail despite not using `.persist()`.
+    // That means it didn't need the network because it was able to
+    // use the disk cache.
     const data2 = await getRemoteJSON(url, {})
     expect((data2 as Record<string, unknown>).cool).toBe(true)
   })
@@ -66,7 +70,8 @@ describe('getRemoteJSON', () => {
     }
 
     cache.delete(url)
-    // A second nock response lets getRemoteJSON recover after the corrupted disk cache misses.
+    // If we don't do this, nock will fail because a second network
+    // request became necessary.
     nock(origin).get(pathname).reply(200, { cool: true })
 
     const data = await getRemoteJSON(url, {})
@@ -87,7 +92,8 @@ describe('getRemoteJSON', () => {
     }
 
     cache.delete(url)
-    // A second nock response lets getRemoteJSON recover after the corrupted disk cache misses.
+    // If we don't do this, nock will fail because a second network
+    // request became necessary.
     nock(origin).get(pathname).reply(200, { cool: true })
 
     const data = await getRemoteJSON(url, {})

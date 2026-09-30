@@ -176,7 +176,7 @@ describe('getAutomaticRequestLogger', () => {
 
       await new Promise((resolve) => setTimeout(resolve, 20))
 
-      expect(consoleLogs).toHaveLength(0)
+      expect(consoleLogs).toHaveLength(0) // Should be filtered out
     })
 
     it('should log _next requests when debug level is set', async () => {
@@ -244,6 +244,7 @@ describe('getAutomaticRequestLogger', () => {
       expect(consoleLogs).toHaveLength(1)
 
       const logOutput = consoleLogs[0]
+      // Should include context fields (even if empty due to mocking)
       expect(logOutput).toContain('requestUuid=')
       expect(logOutput).toContain('path=')
     })
@@ -258,6 +259,7 @@ describe('getAutomaticRequestLogger', () => {
     })
 
     it('should not log in test environment by default', async () => {
+      // Explicit environment settings for CI stability.
       vi.stubEnv('NODE_ENV', 'test')
       vi.stubEnv('ENABLE_DEV_LOGGING', '')
       vi.stubEnv('LOG_LIKE_PRODUCTION', '')
@@ -312,7 +314,7 @@ describe('getAutomaticRequestLogger', () => {
       await new Promise((resolve) => setTimeout(resolve, 20))
 
       expect(consoleLogs).toHaveLength(1)
-      expect(consoleLogs[0]).toContain('-')
+      expect(consoleLogs[0]).toContain('-') // Should show '-' for missing content length
     })
 
     it('should handle missing status code', async () => {
@@ -325,7 +327,7 @@ describe('getAutomaticRequestLogger', () => {
       await new Promise((resolve) => setTimeout(resolve, 20))
 
       expect(consoleLogs).toHaveLength(1)
-      expect(consoleLogs[0]).toContain('200')
+      expect(consoleLogs[0]).toContain('200') // Should default to 200
     })
 
     it('should prefer originalUrl over url', async () => {
@@ -349,6 +351,7 @@ describe('getAutomaticRequestLogger', () => {
       const startTime = Date.now()
       middleware(mockReq as Request, mockRes as Response, mockNext)
 
+      // Simulate some processing time
       await new Promise((resolve) => setTimeout(resolve, 50))
       ;(mockRes as MockResponseWithEnd).end()
       await new Promise((resolve) => setTimeout(resolve, 20))
@@ -364,6 +367,7 @@ describe('getAutomaticRequestLogger', () => {
 
       if (responseTimeMatch) {
         const loggedTime = parseInt(responseTimeMatch[1], 10)
+        // Should be reasonably close to actual duration (within 20ms tolerance)
         expect(loggedTime).toBeGreaterThanOrEqual(40)
         expect(loggedTime).toBeLessThanOrEqual(actualDuration + 20)
       }

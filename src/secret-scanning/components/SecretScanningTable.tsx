@@ -14,8 +14,9 @@ const PAGE_SIZE = 25
 // Identifies this table in the docs.v0.TableInteractionEvent analytics.
 const TABLE_INTERACTION_NAME = 'secret-scanning-patterns'
 
-// Canonical analytics field names keep filter and sort events for the same column
-// grouped together. Filter keys already use these names.
+// Maps DataTable column ids to the canonical analytics field name so that a
+// filter and a sort on the same column report the same
+// table_interaction_field_name. Filter keys already use these canonical names.
 const COLUMN_FIELD_NAMES: Record<string, string> = {
   provider: 'provider',
   supportedSecret: 'secret',
@@ -58,7 +59,7 @@ export function SecretScanningTable({ data }: { data: SecretScanningData[] }) {
   const [sortColumn, setSortColumn] = useState<string | undefined>(undefined)
   const [sortDirection, setSortDirection] = useState<'ASC' | 'DESC'>('ASC')
 
-  // TableInteractionEvent feeds search, filter, sort, and pagination analytics.
+  // Emit a TableInteractionEvent for analytics (github/docs-engineering#6593).
   const trackInteraction = useCallback(
     (interactionType: TableInteractionType, fieldName?: string, fieldValue?: string) => {
       sendEvent({
@@ -76,7 +77,8 @@ export function SecretScanningTable({ data }: { data: SecretScanningData[] }) {
   const debouncedTrackSearchRef = useRef<ReturnType<typeof debounce> | null>(null)
   useEffect(() => {
     debouncedTrackSearchRef.current = debounce((query: string) => {
-      // Sanitize before analytics because users can paste real secrets into this support search.
+      // Sanitize before logging: users may paste a real secret into this
+      // table's search to check support, and the query is sent to analytics.
       trackInteraction('search', 'search', sanitizeSearchQuery(query))
     }, 500)
     return () => {
@@ -261,7 +263,8 @@ export function SecretScanningTable({ data }: { data: SecretScanningData[] }) {
                 field: 'supportedSecret',
                 width: '280px',
                 renderCell: (row) => {
-                  // Remove duplicate token-versions link; convert raw <br> separators to commas.
+                  // The middleware appends HTML for duplicates; strip it.
+                  // Also handle </br> and <br/> separators in the raw secretType.
                   const cleanSecretType = row.secretType
                     .replace(/ <br\/><a href="#token-versions">Token versions<\/a>/, '')
                     .replace(/<\/?br\s*\/?>/gi, ', ')

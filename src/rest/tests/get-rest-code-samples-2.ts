@@ -59,7 +59,7 @@ const standardOperation: Operation = {
   },
 }
 
-// Matches the revoke-credentials endpoint, which allows permissionless access.
+// Sets allowPermissionlessAccess, like the revoke-credentials endpoint.
 const unauthenticatedOperation: Operation = {
   verb: 'post',
   title: 'Revoke a list of credentials',
@@ -341,6 +341,7 @@ describe('REST code samples authentication header handling', () => {
       expect(result).toContain('-H "Accept: application/vnd.github+json"')
       expect(result).toContain('-H "X-GitHub-Api-Version: 2022-11-28"')
       expect(result).toContain('/credentials/revoke')
+      // GitHub CLI handles authentication automatically, so we don't test for auth headers
     })
 
     test('returns undefined for operations with basic auth', () => {
@@ -466,7 +467,7 @@ describe('REST code samples authentication header handling', () => {
         mockVersions,
       )
 
-      // The array must stay under data, not spread as numeric keys.
+      // The array must be nested under `data`, not spread as numeric keys ("0", "1").
       expect(result).toContain('data: [')
       expect(result).toContain("id: 'MVS-2026-001'")
       expect(result).not.toMatch(/["']0["']\s*:/)

@@ -52,7 +52,6 @@ children:
   - /creating-rulesets-for-repositories-in-your-organization
   - /managing-rulesets-for-repositories-in-your-organization
   - /managing-custom-properties-for-repositories-in-your-organization
-  - /sync-external-custom-properties
 shortTitle: Manage organization settings
 ---
 
